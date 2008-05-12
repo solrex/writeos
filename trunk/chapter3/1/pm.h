@@ -1,8 +1,16 @@
+/* chapter3/1/pm.h
 
+   Author: Wenbo Yang <solrex@gmail.com> <http://solrex.cn>
 
-/* Comments below are from "Chapter 3.4.5: Segment Descriptors" of "Intel 64
- * and IA-32 Arch. SW Developer's Manual: Volume 3A: System Programming
- * Guide".  */
+   This file is part of the source code of book "Write Your Own OS with Free
+   and Open Source Software". Homepage @ <http://share.solrex.cn/WriteOS/>.
+
+   This file is licensed under the GNU General Public License; either
+   version 3 of the License, or (at your option) any later version. */
+
+/* Comments below accords to "Chapter 3.4.5: Segment Descriptors" of "Intel
+   64 and IA-32 Arch. SW Developer's Manual: Volume 3A: System Programming
+   Guide". */
 
 /* GDT Descriptor Attributes
      DA_  : Descriptor Attribute
@@ -38,17 +46,17 @@
 .set    DA_386TGate, 0x8F    /* 32-bit Trap Gate */
 
 /* Selector Attributes */
-
-.set     SA_RPL0, 0
-.set     SA_RPL1, 1
-.set     SA_RPL2, 2
-.set     SA_RPL3, 3
-.set     SA_TIG,  0
-.set     SA_TIL,  4
+.set    SA_RPL0, 0
+.set    SA_RPL1, 1
+.set    SA_RPL2, 2
+.set    SA_RPL3, 3
+.set    SA_TIG,  0
+.set    SA_TIL,  4
 
 /* MACROS */
 
-/* Usage: Descriptor Base, Limit, Attr
+/* Segment Descriptor data structure.
+   Usage: Descriptor Base, Limit, Attr
     Base:  4byte 
     Limit: 4byte (low 20 bits available)
     Attr:  2byte (lower 4 bits of higher byte are always 0) */
@@ -60,11 +68,12 @@
     .byte   (\Base >> 24) & 0xFF
 .endm
 
-/* Usage: Gate Selector, Offset, DCount, Attr
-    Selector:  2byte 
+/* Gate Descriptor data structure.
+   Usage: Gate Selector, Offset, DCount, Attr
+    Selector:  2byte
     Offset:    4byte
     DCount:    byte
-    Attr:      byte*/
+    Attr:      byte */
 .macro Gate  Selector, Offset, DCount, Attr
     .2byte     (\Offset & 0xFFFF)
     .2byte     \Selector

@@ -1,4 +1,10 @@
 
+2008.05.13 Wenbo Yang <solrex@gmail.com>
+
+	* pdf/: Move up one level.
+	* ./*: Update copyright information.
+	* chapter3/1/loader.S: Add some comments.
+
 2008.04.19 Wenbo Yang <solrex@gmail.com>
 
 	* pdf/001.tex,
