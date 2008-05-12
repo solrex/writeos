@@ -1,0 +1,128 @@
+\chapter{进入保护模式} \label{CHpm}
+
+前面我们看到，通过一些很简单的代码，我们做到了启动一个微型系统，加载文件系统中的文件进入内存并运行的功能。应该注意的是，在前面的代码中我们使用的内存空间都很小。我们看一下~boot.bin~和~LOADER.BIN~的大小就能感觉出来（当然，可执行文件小未必使用内存空间小，但是这两个文件也太小了~\smiley）。
+
+\begin{Command}
+$ ls -l boot.bin LOADER.BIN 
+-rwxr-xr-x 1 solrex solrex 512 2008-04-26 16:34 boot.bin
+-rwxr-xr-x 1 solrex solrex  15 2008-04-26 16:34 LOADER.BIN
+\end{Command}
+
+boot.bin~是~512~个字节（其中还有我们填充的内容，实际指令只有~480~个字节），而~LOADER.BIN~更过分，只有~15~个字节大小。可想而知这两个文件在内存中能使用多大的空间吧。如果读者有些汇编语言经验的话，就会发现我们在前面的程序中使用的存储器寻址都是在实模式下进行的，即：由段寄存器（cs,~ds:~16-bit）配合段内偏移地址（16-bit）来定位一个实际的~20-bit~物理地址，所以我们前面的程序最多支持~$2^{20} = 2^{10}*2^{10} = 1024*1024$ bytes = 1MB~的寻址空间。
+
+哇，~1MB~不小了，我们的操作系统加一起连~1KB~都用不到，~1MB~寻址空间足够了。但是需要考虑到的一点是，就拿我们现在用的~1.44MB的（已经被淘汰的）软盘标准来说，如果软盘上某个文件超过~1MB~，我们的操作系统就没办法处理了。那么如果以后把操作系统安装到硬盘上之后呢？我们就没办法处理稍微大一点的文件了。
+
+所以我们要从最原始的~Intel 8086/8088 CPU~的实模式中跳出来，进入~Intel 80286~之后系列~CPU~给我们提供的保护模式。这还将为我们带来其它更多的好处，具体内容请继续往下读。
+
+\section{实模式和保护模式}
+
+\BOXED{0.9\textwidth}{
+\danger\\ 如果您需要更详细的知识，也许您更愿意去读 Intel 的手册，本节内容主要集中在：\href{http://download.intel.com/design/processor/manuals/253668.pdf}{Intel\textregistered~64 and IA-32 Architectures Software Developer's Manual, Volume 3A: System Programming Guide}, 第~2~章和第~3~章.\enddanger
+}
+
+\subsection{一段历史}
+
+Intel~公司在~1978~年发布了一款~16~位字长~CPU: 8086~，最高主频~5 MHz $\sim$ 10 MHz~，集成了~29,000~个晶体管，这款在今天感觉像玩具一样的~CPU~却是奠定今天~Intel PC~芯片市场地位的最重要的产品之一。虽然它的后继者~8088~，加强版的~8086~（增加了一个~8~比特的外部总线）才是事实上的~IBM~兼容机（PC，个人电脑）雏形的核心，但人们仍然习惯于用~8086~作为厂商标志代表~Intel~。
+
+因为受到字长（16~位）的限制，如果仅仅使用单个寄存器寻址，~8086~仅仅能访问~64KB($2^{16}$)~的地址空间，这显然不能满足一般要求，而当时~1MB($2^{20}$)~对于一般的应用就比较足够了，所以~8086~使用了~20~位的地址线。
+
+在~8086~刚发布的时候，没有“实模式”这个说法，因为当时的~Intel CPU~只有一种模式。在~Intel~以后的发布中，~80286~引入了“保护模式”寻址方式，将~CPU~的寻址范围扩大到~16($2^{24}$) MB~，但是~80286~仍然是一款~16~位~CPU~，这就限制了它的广泛应用。但是“实模式”这个说法，就从~80286~开始了。
+
+接下来的发展就更快了，1985~年发布的~i386~首先让~PC CPU~进入了~32~位时代，由此而带来的好处显而易见，寻址能力大大增强，但是多任务处理和虚拟存储器的需求仍然推动着~i386~向更完善的保护模式发展。下面我们来了解一下“实模式”和“保护模式”的具体涵义。
+
+\subsection{实模式}
+
+实模式（real mode），有时候也被成为实地址模式（real address mode）或者兼容模式（compatibility mode）是~Intel 8086 CPU~以及以其为基础发展起来的~x86~兼容~CPU~采用的一种操作模式。其主要的特点有：20~比特的分段访问的内存地址空间（即~1~MB~的寻址能力）；程序可直接访问~BIOS~中断和外设；硬件层不支持任何内存保护或者多任务处理。~80286~之后所有~x86 CPU~在加电自举时都是首先进入实模式；~80186~以及之前的~CPU~只有一种操作模式，相当于实模式。
+
+\subsection{保护模式}
+
+保护模式（protected mode），有时候也被成为保护的虚拟地址模式（protected virtual address mode），也是一种~x86~兼容~CPU~的工作模式。保护模式为系统软件实现虚拟内存、分页机制、安全的多任务处理的功能支持，还有其它为操作系统提供的对应用程序的控制功能支持，比如：特权级、实模式应用程序兼容、虚拟~8086~模式。
+
+\subsection{实模式和保护模式的寻址模式}
+
+前面提到过，实模式下的地址线是~20~位的，所以实模式下的寻址模式使用分段方式来解决~16~位字长机器提供~20~位地址空间的问题。这个分段方法需要程序员在编制程序的过程中将存储器划分成段，每个段内的地址空间是线性增长的，最大可达~64K($2^16$)，这样段內地址就可以使用~16~位表示。段基址（~20-bit~）的最低~4~位必须是~0~，这样段基址就可以使用~16~位段地址来表示，需要时将段地址左移~4~位就得到段起始地址。除了便于寻址之外，分段还有一个好处，就是将程序的代码段、数据段和堆栈段等隔离开，避免相互之间产生干扰。
+
+当计算某个单元的物理地址时，比如汇编语言中的一个~Label~，就通过段地址（~16-bit~）左移~4~位得到段基址（~20-bit~），再加上该单元~(Label)~的段內偏移量（~16-bit~）来得到其物理地址（~20-bit~），如图~\ref{rm_addr}~所示。
+
+\begin{figure*}[!t]
+\centerline{\subfloat[实模式寻址模型]{\includegraphics[width=.48\textwidth,keepaspectratio]{rm_addr}%
+\label{rm_addr}}
+\hfil
+\subfloat[保护模式寻址模型]{\includegraphics[width=.48\textwidth,keepaspectratio]{protected_seg}%
+\label{protected_seg}}}
+\caption{实模式与保护模式寻址模型比较}
+\label{real_vs_pro}
+\end{figure*}
+
+一般情况下，段地址会被放在四个段寄存器中，即：代码段~CS，数据段~DS，堆栈段~SS~和附加段~ES~寄存器。这样在加载数据或者控制程序运行的时候，只需要一个偏移量参数，CPU~会自动用对应段的起始地址加上偏移量参数来得到需要的地址。（后继~CPU~又加上了两个段寄存器~FS~和~GS~，不过使用方式是基本一样的。）
+
+由此可见，实模式的寻址模式是很简单的，就是用两个~16~位逻辑地址（段地址：偏移地址）组合成一个~20~位物理地址，而保护模式的寻址方式就要稍微复杂一点了。
+
+\BOXED{0.9\textwidth}{
+Intel~的~CPU~在保护模式下是可以选择打开分页机制的，但为了简单起见，我们先不开启分页机制，所以下面的讲解针对只有分段机制的保护模式展开。
+}
+
+在保护模式下，每个单元的物理地址仍然是由逻辑地址表示，但是这个逻辑地址不再由（段地址：偏移地址）组成了，而是由（段选择子：偏移地址）表示。这里的偏移地址也变成了~32~位的，所以段空间也比实模式下大得多。偏移地址的意思和实模式下并没有本质不同，但段地址的计算就要复杂一些了，如图~\ref{protected_seg}~所示。段基址（Segment Base Address）被存放在段描述符（Segment Descriptor）中，GDT（Global Descriptor Table，全局段选择子表）是保存着所有段选择子的信息，段选择子（Segment Selector）是一个指向某个段选择子的索引。
+
+如图~\ref{protected_seg}~所示，当我们计算某个单元的物理地址时，只需要给出（段选择子：偏移地址），CPU~会从~GDT~中按照段选择子找到对应的段描述符，从段描述符中找出段基址，将段基址加上偏移量，就得到了该单元的物理地址。
+
+\section{与保护模式初次会面}
+
+介绍完了保护模式和实模式的不同，下面我们就尝试一下进入保护模式吧。
+
+首先，我们来理清一下应该如何进入保护模式：
+
+\begin{enumerate}
+  \item 我们需要一个~GDT。由于保护模式的寻址方式是基于~GDT~的，我们得自己写一个~GDT~数据结构并将其载入到系统中。
+  \item 我们需要为跳入保护模式作准备。由于保护模式和实模式运行方式不同，在跳入保护模式之前，我们需要一些准备工作。
+  \item 我们需要一段能在保护模式下运行的代码，以提示我们成功进入了保护模式。
+\end{enumerate}
+
+下面我们就来一步步完成我们的第一个保护模式 demo。
+
+\subsection{GDT~数据结构}
+
+要写~GDT，首先得了解~GDT~的数据结构。GDT~实际上只是一个存储段描述符的线性表（可以理解成一个段描述符数组），对它的要求是其第一个段描述符置为空，因为处理机不会去处理第一个段描述符，所以理解~GDT~的数据结构难点主要在于理解段描述符的数据结构。
+
+段描述符主要用来为处理机提供段位址，段访问控制和状态信息。图~\ref{seg_desc}~显示了一个基本的段描述符结构：
+
+\FIG{段描述符}{seg_desc}{.9\textwidth}
+
+看到上面那么多内容，是不是感觉有点儿恐怖啊！其实简单的来看，我们现在最关注的是段基址，就是图~\ref{seg_desc}~中标记为~Base~的部分。可以看到，段基址在段描述符中被分割为三段存储，分别是：Base 31:24, Base 23:16, Base Address 15:0，把这三段拼起来，我们就得到了一个~32~位的段基址。
+
+有了段基址，就需要有一个界限来避免程序跑丢发生段错误，这个界限就是图~\ref{seg_desc}~中标记为~Limit~的部分，将~Seg. Limit 19:16~和~Segment Limit 15:0~拼起来我们就得到了一个~20~位的段界限，这个界限就是应该是段需要的长度了。
+
+下面还要说的就是那个~D/B Flag~，D/B~代表~Default Operation Size~，0~代表~16~位的段，1~代表~32~位的段。为了充分利用~CPU~，我们当然要设置为~32~位模式了。剩下那些乱七八糟的~Flag~呢，无非就是提供段的属性（代码段还是数据段？只读还是读写？），就留给读者自己阅读好了~\smiley。
+
+这些东西那么乱，难道要每次一点儿一点儿地计算吗？放心，程序员自有办法，请看下面的程序：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=56, lastline=70]{../src/chapter3/1/pm.h}
+\codecaption{自动生成段描述符的宏定义(节自 chapter3/1/pm.h)}\label{CHpm_descm}
+
+图~\ref{CHpm_descm}~中所示，就是自动生成段描述符的汇编宏定义。我们只需要给宏~Descriptor~三个参数：Base(段基址), Limit(段界限[段长度]), Attr(段属性)，Descriptor~就会自动将三者展开放到段描述符中对应的位置。看看我们在程序中怎么使用这个宏：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=21, lastline=26]{../src/chapter3/1/loader.S}
+\codecaption{自动生成段描述符的宏使用示例(节自 chapter3/1/loader.S)}\label{CHpm_descmu}
+
+图~\ref{CHpm_descmu}~中，就利用~Descriptor~宏生成了三个段描述符，形成了一个~GDT。注意到没有，第一个段描述符是空的（参数全为~0）。这里~LABEL\_DESC\_CODE32~的段基址为~0~是因为我们无法确定它的准确位置，它将在运行期被填入。
+
+有人可能会产生疑问，段基址和段界限什么意思我们都知道了，那段属性怎么回事呢？~DA\_C, DA\_32, DA\_DRW~都是什么东西啊？是这样的，为了避免手动一个一个置段描述符中的~Flag~，我们预先定义了一些常用属性，用的时候只需要将这些属性加起来作为宏~Descriptor~的参数，就能将段描述符中的所有~Flag~置上（记得~C~语言中~fopen~的参数吗？）。这些属性的定义如下（没必要细看，用的时候再找即可）：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11, lastline=55]{../src/chapter3/1/pm.h}
+\codecaption{预先设置的段属性(节自 chapter3/1/pm.h)}\label{CHpm_segattr}
+
+\subsection{准备在保护模式下运行的代码}
+
+为什么把这节提前到第~\ref{CHpm_loadgdt}~节前讲呢？因为要写入~GDT~正确的段描述符，首先要知道段的信息，我们就得先准备好这个段：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=83, lastline=99]{../src/chapter3/1/loader.S}
+\codecaption{第一个在保护模式下运行的 demo(节自 chapter3/1/loader.S)}\label{CHpm_demo1}
+
+其实这个段的作用很简单，在屏幕中间打印一个红色的"P"。
+
+\subsection{加载~GDT} \label{CHpm_loadgdt}
+
+GDT~所需要的信息我们都知道了，GDT~表也通过图~\ref{CHpm_descmu}~中的代码实现了。那么，我们应该向~GDT~中填入缺少的信息，然后载入~GDT~了。同样，在将~GDT~载入到处理机中之前，我们也需要知道~GDT~的位置和~GDT~的界限：
+
+
+
