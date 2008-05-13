@@ -1,9 +1,17 @@
 
 2008.05.13 Wenbo Yang <solrex@gmail.com>
 
-	* pdf/: Move up one level.
-	* ./*: Update copyright information.
-	* chapter3/1/loader.S: Add some comments.
+	* Change dir hierarchy:
+	* src/: for source code. 
+	* pdf/: for book tex source.
+	* src/chapter3/1/pm.h,
+	* src/chapter3/1/boot.S,
+	* src/chapter3/1/loader.S,
+	* src/chapter3/1/Makefile,
+	* src/chapter3/1/solrex_x86_boot.ld,
+	* src/chapter3/1/solrex_x86_dos.ld: Source for chapter 3 part 1.
+	* src/chapter3/1/bochsrc.bxrc.
+	* pdf/003.tex: Tex source for chapter 3.
 
 2008.04.19 Wenbo Yang <solrex@gmail.com>
 
