@@ -44,10 +44,10 @@ boot.img: boot.bin
 # "sudo" command to do "make copy"
 copy: boot.img LOADER.BIN
 	@mkdir -p /tmp/floppy;\
-	@mount -o loop boot.img /tmp/floppy/ -o fat=12;\
-	@cp LOADER.BIN /tmp/floppy/;\
-	@umount /tmp/floppy/;\
-	@rm -rf /tmp/floppy/;
+	mount -o loop boot.img /tmp/floppy/ -o fat=12;\
+	cp LOADER.BIN /tmp/floppy/;\
+	umount /tmp/floppy/;\
+	rm -rf /tmp/floppy/;
 
 clean: 
 	@rm -f *.o *.elf *.bin *.BIN
