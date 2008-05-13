@@ -74,7 +74,7 @@ Intel~的~CPU~在保护模式下是可以选择打开分页机制的，但为了
 
 \begin{enumerate}
   \item 我们需要一个~GDT。由于保护模式的寻址方式是基于~GDT~的，我们得自己写一个~GDT~数据结构并将其载入到系统中。
-  \item 我们需要为跳入保护模式作准备。由于保护模式和实模式运行方式不同，在跳入保护模式之前，我们需要一些准备工作。
+  \item 我们需要为进入保护模式作准备。由于保护模式和实模式运行方式不同，在进入保护模式之前，我们需要一些准备工作。
   \item 我们需要一段能在保护模式下运行的代码，以提示我们成功进入了保护模式。
 \end{enumerate}
 
@@ -111,18 +111,54 @@ Intel~的~CPU~在保护模式下是可以选择打开分页机制的，但为了
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11, lastline=55]{../src/chapter3/1/pm.h}
 \codecaption{预先设置的段属性(节自 chapter3/1/pm.h)}\label{CHpm_segattr}
 
-\subsection{准备在保护模式下运行的代码}
+\subsection{保护模式下的~demo}
 
-为什么把这节提前到第~\ref{CHpm_loadgdt}~节前讲呢？因为要写入~GDT~正确的段描述符，首先要知道段的信息，我们就得先准备好这个段：
+为什么把这节提前到第~\ref{CHpm_secloadgdt}~节前讲呢？因为要写入~GDT~正确的段描述符，首先要知道段的信息，我们就得先准备好这个段：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=83, lastline=99]{../src/chapter3/1/loader.S}
 \codecaption{第一个在保护模式下运行的 demo(节自 chapter3/1/loader.S)}\label{CHpm_demo1}
 
 其实这个段的作用很简单，在屏幕中间打印一个红色的"P"。
 
-\subsection{加载~GDT} \label{CHpm_loadgdt}
+\subsection{加载~GDT} \label{CHpm_secloadgdt}
 
-GDT~所需要的信息我们都知道了，GDT~表也通过图~\ref{CHpm_descmu}~中的代码实现了。那么，我们应该向~GDT~中填入缺少的信息，然后载入~GDT~了。同样，在将~GDT~载入到处理机中之前，我们也需要知道~GDT~的位置和~GDT~的界限：
+GDT~所需要的信息我们都知道了，GDT~表也通过图~\ref{CHpm_descmu}~中的代码实现了。那么，我们应该向~GDT~中填入缺少的信息，然后载入~GDT~了。将~GDT~载入处理机是用~\code{lgdt}~汇编指令实现的，但是~\code{lgdt}~指令需要存放~GDT~的基址和界限的指针作参数，所以我们还需要知道~GDT~的位置和~GDT~的界限：
 
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=22, lastline=63]{../src/chapter3/1/loader.S}
+\codecaption{加载~GDT(节自 chapter3/1/loader.S)}\label{CHpm_loadgdt}
 
+图~\ref{CHpm_loadgdt}~中~\code{GdtPtr}~所指，即为~GDT~的界限和基址所存放位置。某段描述符对应的~GDT~选择子，就是其段描述符相对于~GDT~基址的位置（在我们例子里~GDT~基址为~\code{LABEL\_GDT}~指向的位置）。
+
+在图~\ref{CHpm_loadgdt}~中所示的代码，主要干了两件事：第一，将图~\ref{CHpm_demo1}~所示~demo~的段基址放入~GDT~中对应的段描述符中；第二，将~GDT~的基址放到~\code{GdtPtr}~所指的数据结构中，并加载~\code{GdtPtr}~所指的数据结构到~GDTR~寄存器中（使用~\code{lgdt}~指令）。
+
+\subsection{进入保护模式}
+
+进入保护模式前，我们需要将中断关掉，因为保护模式下中断处理的机制和实模式是不一样的，不关掉中断可能带来麻烦。使用~\code{cli}~汇编指令可以清除所有中断~flag。
+
+由于实模式下仅有~20~条地址线：A0, A1, \ldots, A19，所以当我们要进入保护模式时，需要打开~A20~地址线。打开~A20~地址线有至少三种方法，我们这里采用~IBM~使用的方法，通常被称为：“Fast A20 Gate”，即修改系统控制端口~92h~，因为其端口的第~1~位控制着~A20~地址线，所以我们只需要将~0b00000010~赋给端口~92h~即可。
+
+当前面两项工作完成后，我们就可以进入保护模式了。方法很简单，将~cr0~寄存器的第~0~位~PE~位置为~1~即可使~CPU~切换到保护模式下运行。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=64, lastline=77]{../src/chapter3/1/loader.S}
+\codecaption{进入保护模式(节自 chapter3/1/loader.S)}\label{CHpm_enablepm}
+
+\subsection{特别的混合跳转指令}
+
+虽然已经进入了保护模式，但由于我们的~CS~寄存器存放的仍然是实模式下~16~位的段信息，要跳转到我们的~demo~程序并不是那么简单的事情。因为~demo~程序是~32~位的指令，而我们现在仍然运行的是~16~位的指令。从~16~位的代码段中跳转到~32~位的代码段，不是一般的~near~或~far~跳转指令能解决得了的，所以这里我们需要一个特别的跳转指令。在这条指令运行之前，所有的指令都是~16~位的，在它运行之后，就变成~32~位指令的世界。
+
+在~Intel~的手册中，把这条混合跳转指令称为~far jump(ptr16:32)~，在~NASM~手册中，将这条指令称为~Mixed-Size Jump~，我们就沿用~NASM~的说法，将这条指令称为混合字长跳转指令。NASM~提供了这条指令的汇编语言实现：
+\begin{Command}
+jmp dword 0x1234:0x56789ABC
+\end{Command}
+但是很遗憾的是，GAS~没有提供这条指令的实现，所以我们必须用~.byte~伪代码直接写二进制指令（如图~\ref{CHpm_mixedjmp}），比较庆幸的是，我们也只需要用到它一次。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=77, lastline=82]{../src/chapter3/1/loader.S}
+\codecaption{混合字长跳转指令(节自 chapter3/1/loader.S)}\label{CHpm_mixedjmp}
+
+执行这条混合字长的跳转指令时，CPU~就会用段选择子~\code{SelectorCode32}~去寻找~GDT~中对应的段，由于段偏移是~0~，所以~CPU~将跳转到图~\ref{CHpm_demo1}~中~demo~程序的开头。为了方便阅读，整个~loader.S~的代码附在图~\ref{CHpm_loader1}~中：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=1, lastline=99]{../src/chapter3/1/loader.S}
+\codecaption{chapter3/1/loader.S (节自 chapter3/1/loader.S)}\label{CHpm_loader1}
+
+\subsection{生成镜像并测试}
 

@@ -57,7 +57,7 @@ LABEL_BEGIN:
     mov     %ds, %ax
     shl     $4, %eax
     add     $(LABEL_GDT), %eax      /* eax <- gdt base*/
-	movl    %eax, (GdtPtr + 2)
+    movl    %eax, (GdtPtr + 2)
 
     /* Load GDTR(Global Descriptor Table Register) */
     lgdtw   GdtPtr
@@ -65,20 +65,20 @@ LABEL_BEGIN:
     /* Clear Interrupt Flags */
     cli
 
-    /* Open A20 */
+    /* Open A20 line. */
     inb     $0x92, %al
     orb     $0b00000010, %al
     outb    %al, $0x92
 
-    /* Prepare to swithing to protect mode */
+    /* Enable protect mode, PE bit of CR0. */
     movl    %cr0, %eax
     orl     $1, %eax
     movl    %eax, %cr0
 
-    /* Enter protect mode. */
-    .2byte  0xea66          /* GAS can not handle mixed jump, so we write */
-    .4byte  0x00000000      /* an ugly code here. */
-    .2byte  SelectorCode32
+    /* Mixed-Size Jump. */
+    .2byte  0xea66          /* GAS can not handle mixed-size jump :(. We   */
+    .4byte  0x00000000      /* have to code it manually. It is an ugly way.*/
+    .2byte  SelectorCode32  /* = jmp dword SelectorCode32:0 (NASM)         */
 
 LABEL_SEG_CODE32: 
 .code32
