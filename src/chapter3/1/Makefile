@@ -23,7 +23,7 @@ LDFLAGS_DOS=-T$(LDFILE_DOS)
 all: boot.img LOADER.BIN
 	@echo '#################################################################'
 	@echo '# Compiling work finished, now you can use "sudo make copy" to'
-	@echo '# copy LOADER.BIN into boog.img'
+	@echo '# copy LOADER.BIN into boot.img'
 	@echo '#################################################################'
 
 boot.bin: boot.S

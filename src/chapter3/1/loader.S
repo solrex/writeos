@@ -85,7 +85,7 @@ LABEL_SEG_CODE32:
     mov     $(SelectorVideo), %ax
     mov     %ax, %gs                /* Video segment selector(dest) */
 
-    movl 	$((80 * 10 + 0) * 2), %edi
+    movl    $((80 * 10 + 0) * 2), %edi
     movb    $0xC, %ah               /* 0000: Black Back 1100: Red Front */
     movb    $'P', %al
 
