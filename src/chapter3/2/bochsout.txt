@@ -1,0 +1,125 @@
+00000000000i[     ] Bochs x86 Emulator 2.3.5
+00000000000i[     ]   Build from CVS snapshot, on September 16, 2007
+00000000000i[     ] System configuration
+00000000000i[     ]   processors: 1 (cores=1, HT threads=1)
+00000000000i[     ]   A20 line support: yes
+00000000000i[     ]   APIC support: no
+00000000000i[     ] CPU configuration
+00000000000i[     ]   level: 5
+00000000000i[     ]   TLB enabled: yes
+00000000000i[     ]   SMP support: no
+00000000000i[     ]   FPU support: yes
+00000000000i[     ]   MMX support: yes
+00000000000i[     ]   SSE support: no
+00000000000i[     ]   CLFLUSH support: no
+00000000000i[     ]   v8086 mode support: yes
+00000000000i[     ]   VME support: yes
+00000000000i[     ]   3dnow! support: no
+00000000000i[     ]   PAE support: no
+00000000000i[     ]   PGE support: no
+00000000000i[     ]   PSE support: yes
+00000000000i[     ]   x86-64 support: no
+00000000000i[     ]   SEP support: no
+00000000000i[     ] Optimization configuration
+00000000000i[     ]   Guest2HostTLB support: no
+00000000000i[     ]   RepeatSpeedups support: no
+00000000000i[     ]   Icache support: no
+00000000000i[     ]   Host Asm support: yes
+00000000000i[     ]   Fast function calls: no
+00000000000i[     ] Devices configuration
+00000000000i[     ]   NE2000 support: no
+00000000000i[     ]   PCI support: no
+00000000000i[     ]   SB16 support: no
+00000000000i[     ]   USB support: no
+00000000000i[     ]   VGA extension support: vbe 
+00000000000i[MEM0 ] allocated memory at 0xb5a3c008. after alignment, vector=0xb5a3d000
+00000000000i[MEM0 ] 32.00MB
+00000000000i[MEM0 ] rom at 0xfffe0000/131072 ('/usr/share/bochs/BIOS-bochs-latest')
+00000000000i[MEM0 ] rom at 0xc0000/39424 ('/usr/share/vgabios/vgabios.bin')
+00000000000i[CMOS ] Using local time for initial clock
+00000000000i[CMOS ] Setting initial clock to: Fri May 23 09:12:53 2008 (time0=1211505173)
+00000000000i[DMA  ] channel 4 used by cascade
+00000000000i[DMA  ] channel 2 used by Floppy Drive
+00000000000i[FDD  ] fd0: 'boot.img' ro=0, h=2,t=80,spt=18
+00000000000i[MEM0 ] Register memory access handlers: 000a0000-000bffff
+00000000000i[XGUI ] test_alloc_colors: 16 colors available out of 16 colors tried
+00000000000i[XGUI ] font 8 wide x 16 high, display depth = 24
+00000000000i[VGA  ] interval=40000
+00000000000i[MEM0 ] Register memory access handlers: e0000000-e07fffff
+00000000000i[VGA  ] VBE Bochs Display Extension Enabled
+00000000000i[     ] init_mem of 'harddrv' plugin device by virtual method
+00000000000i[     ] init_mem of 'keyboard' plugin device by virtual method
+00000000000i[     ] init_mem of 'serial' plugin device by virtual method
+00000000000i[     ] init_mem of 'parallel' plugin device by virtual method
+00000000000i[     ] init_mem of 'extfpuirq' plugin device by virtual method
+00000000000i[     ] init_mem of 'speaker' plugin device by virtual method
+00000000000i[     ] init_dev of 'harddrv' plugin device by virtual method
+00000000000i[HD   ] Using boot sequence floppy, none, none
+00000000000i[HD   ] Floppy boot signature check is enabled
+00000000000i[     ] init_dev of 'keyboard' plugin device by virtual method
+00000000000i[KBD  ] will paste characters every 1000 keyboard ticks
+00000000000i[     ] init_dev of 'serial' plugin device by virtual method
+00000000000i[SER  ] com1 at 0x03f8 irq 4
+00000000000i[     ] init_dev of 'parallel' plugin device by virtual method
+00000000000i[PAR  ] parallel port 1 at 0x0378 irq 7
+00000000000i[     ] init_dev of 'extfpuirq' plugin device by virtual method
+00000000000i[     ] init_dev of 'speaker' plugin device by virtual method
+00000000000i[SPEAK] Failed to open /dev/console: Resource temporarily unavailable
+00000000000i[SPEAK] Deactivating beep on console
+00000000000i[     ] register state of 'harddrv' plugin device by virtual method
+00000000000i[     ] register state of 'keyboard' plugin device by virtual method
+00000000000i[     ] register state of 'serial' plugin device by virtual method
+00000000000i[     ] register state of 'parallel' plugin device by virtual method
+00000000000i[     ] register state of 'extfpuirq' plugin device by virtual method
+00000000000i[     ] register state of 'speaker' plugin device by virtual method
+00000000000i[SYS  ] bx_pc_system_c::Reset(HARDWARE) called
+00000000000i[     ] reset of 'harddrv' plugin device by virtual method
+00000000000i[     ] reset of 'keyboard' plugin device by virtual method
+00000000000i[     ] reset of 'serial' plugin device by virtual method
+00000000000i[     ] reset of 'parallel' plugin device by virtual method
+00000000000i[     ] reset of 'extfpuirq' plugin device by virtual method
+00000000000i[     ] reset of 'speaker' plugin device by virtual method
+00000000000i[XGUI ] [x] Mouse off
+00000000000i[     ] set SIGINT handler to bx_debug_ctrlc_handler
+00000003572i[BIOS ] $Revision: 1.194 $ $Date: 2007/12/23 19:46:27 $
+00000080000e[VGA  ] character height = 1, skipping text update
+00000160000e[VGA  ] character height = 1, skipping text update
+00000240000e[VGA  ] character height = 1, skipping text update
+00000317544i[KBD  ] reset-disable command received
+00000320000e[VGA  ] character height = 1, skipping text update
+00000352162i[BIOS ] Starting rombios32
+00000352873i[BIOS ] ram_size=0x02000000
+00000353387i[BIOS ] Found 1 cpu(s)
+00000400000e[VGA  ] character height = 1, skipping text update
+00000480000e[VGA  ] character height = 1, skipping text update
+00000560000e[VGA  ] character height = 1, skipping text update
+00000640000e[VGA  ] character height = 1, skipping text update
+00000643719i[VBIOS] VGABios $Id: vgabios.c,v 1.66 2006/07/10 07:47:51 vruppert Exp $
+00000643790i[VGA  ] VBE known Display Interface b0c0
+00000643822i[VGA  ] VBE known Display Interface b0c4
+00000646747i[VBIOS] VBE Bios $Id: vbe.c,v 1.58 2006/08/19 09:39:43 vruppert Exp $
+00000720000i[XGUI ] charmap update. Font Height is 16
+00000800000i[XGUI ] charmap update. Font Height is 16
+00001095869i[BIOS ] Booting from 0000:7c00
+00001274117i[     ] dbg: Quit
+00001274117i[CPU  ] real mode
+00001274117i[CPU  ] CS.d_b = 16 bit
+00001274117i[CPU  ] SS.d_b = 16 bit
+00001274117i[CPU  ] | EAX=000000ff  EBX=00000300  ECX=00000002  EDX=00000006
+00001274117i[CPU  ] | ESP=00007c00  EBP=00007d20  ESI=ffff7d1f  EDI=0008011a
+00001274117i[CPU  ] | IOPL=0 id vip vif ac vm rf nt of df if tf sf zf af PF cf
+00001274117i[CPU  ] | SEG selector     base    limit G D
+00001274117i[CPU  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00001274117i[CPU  ] |  CS:0000( 0004| 0|  0) 00000000 0000ffff 0 0
+00001274117i[CPU  ] |  DS:0000( 0005| 0|  0) 00000000 0000ffff 0 0
+00001274117i[CPU  ] |  SS:0000( 0005| 0|  0) 00000000 0000ffff 0 0
+00001274117i[CPU  ] |  ES:9000( 0005| 0|  0) 00090000 0000ffff 0 0
+00001274117i[CPU  ] |  FS:0000( 0005| 0|  0) 00000000 0000ffff 0 0
+00001274117i[CPU  ] |  GS:0000( 0005| 0|  0) 00000000 0000ffff 0 0
+00001274117i[CPU  ] | EIP=00007cf1 (00007cf1)
+00001274117i[CPU  ] | CR0=0x00000010 CR1=0 CR2=0x00000000
+00001274117i[CPU  ] | CR3=0x00000000 CR4=0x00000000
+00001274117i[CPU  ] >> cmp ax, 0x0fff : 3DFF0F
+00001274117i[CMOS ] Last time is 1211505173 (Fri May 23 09:12:53 2008)
+00001274117i[XGUI ] Exit.
+00001274117i[CTRL ] quit_sim called with exit code 0
