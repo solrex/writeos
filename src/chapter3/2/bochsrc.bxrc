@@ -1,5 +1,5 @@
 ###############################################################
-# bochsrc.bxrc file for TINIX disk image.
+# bochsrc.bxrc file for solrex disk image.
 ###############################################################
 
 # how much memory the emulated machine will have
@@ -10,7 +10,7 @@ romimage: file=/usr/share/bochs/BIOS-bochs-latest
 vgaromimage: file=/usr/share/vgabios/vgabios.bin
 
 # what disk images will be used 
-floppya: 1_44=boot.img, status=inserted
+floppya: 1_44=solrex.img, status=inserted
 
 # hard disk
 # ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14

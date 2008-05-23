@@ -1,4 +1,4 @@
-/* chapter3/1/pm.h
+/* chapter3/2/pm.h
 
    Author: Wenbo Yang <solrex@gmail.com> <http://solrex.cn>
 

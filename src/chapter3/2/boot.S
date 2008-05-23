@@ -1,4 +1,4 @@
-/* chapter3/1/boot.S
+/* chapter3/2/boot.S
 
    Author: Wenbo Yang <solrex@gmail.com> <http://solrex.cn>
 

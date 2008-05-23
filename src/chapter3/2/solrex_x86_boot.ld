@@ -1,4 +1,4 @@
-/* chapter3/1/solrex_x86_boot.ld
+/* chapter3/2/solrex_x86_boot.ld
 
    Author: Wenbo Yang <solrex@gmail.com> <http://solrex.cn>
 
