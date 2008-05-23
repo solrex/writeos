@@ -1,4 +1,4 @@
-# chapter3/1/Makefile
+# chapter3/2/Makefile
 #
 # Author: Wenbo Yang <solrex@gmail.com> <http://solrex.cn>
 #
