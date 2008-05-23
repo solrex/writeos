@@ -153,7 +153,7 @@ LABEL_GOON_LOADING_FILE:
     call    ReadSector
     pop     %ax             /* Got index of this sector in FAT */
     call    GetFATEntry
-    cmp     $0x0fff,%ax
+    cmp     $0x0ff,%ax
     jz      LABEL_FILE_LOADED
     push    %ax             /* Save index of this sector in FAT */
     mov     $RootDirSectors,%dx
@@ -291,3 +291,4 @@ LABEL_GET_FAT_ENTRY_OK:
 
 .org 510        /* Skip to address 0x510. */
 .2byte 0xaa55   /* Write boot flag to 1st sector(512 bytes) end */
+
