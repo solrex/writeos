@@ -13,6 +13,6 @@ SECTIONS
   . = 0x7c00;
   .text :
   {
-    _ftext = .;
+    _ftext = .;     /* Program will be loaded to 0x7c00. */
   } = 0
 }

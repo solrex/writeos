@@ -75,15 +75,7 @@ BootMessage:.ascii "Hello, OS world!"
 
 但有一个问题,我们可以使用~\code{nasm boot.asm -o boot.bin}~命令将~boot.asm~直接编译成二进制文件，~GAS~不能。不过~GAS~的不能恰好给开发者一个机会去分步地实现从汇编源代码到二进制文件这个过程，使编译更为灵活。下面请看~GAS~是如何通过连接脚本控制程序地址空间的：
 
-\begin{Codefrag}
-SECTIONS {
-  . = 0x7c00;
-  .text :
-  {
-    _ftext = .;    //程序将被加载到内存的7c00处
-  } = 0
-}
-\end{Codefrag}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11]{../src/chapter2/1/solrex_x86.ld}
 \codecaption{boot.S~的连接脚本~(chapter2/1/solrex\_x86.ld)}\label{CHsmall_solrexLD}
 
 \BOXED{0.9\textwidth}{
@@ -467,7 +459,7 @@ DIR\_FileSize & 0x1c & 4  & 文件大小 & 0x000000f\\
 
 这里，我们把~loader.bin~装入内存中的~BaseOfLoader:OffsetOfLoader~处，但是在图~\ref{CHsmall_findloader}~中我们将根目录区也是装载到这个位置。因为在找到~loader.bin~之后，该内存区域对我们已经没有用处了，所以它尽可以被覆盖。
 
-我们已经知道了如何装入一个扇区，但是从~FAT~表中寻找其它的扇区还是意见麻烦的事情，所以我们写了一个函数~GetFATEntry~来专门做这件事情，函数的输入是扇区号，输出是其对应的~FAT~项的值，见图~\ref{CHsmall_GetFATEntry}。
+我们已经知道了如何装入一个扇区，但是从~FAT~表中寻找其它的扇区还是一件麻烦的事情，所以我们写了一个函数~GetFATEntry~来专门做这件事情，函数的输入是扇区号，输出是其对应的~FAT~项的值，见图~\ref{CHsmall_GetFATEntry}。
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=246, lastline=291]{../src/chapter2/2/boot.S}
 \codecaption{寻找~FAT~项的函数~GetFATEntry~(节自 chapter2/2/boot.S)}\label{CHsmall_GetFATEntry}

@@ -30,7 +30,7 @@
 
 \renewcommand\indexname{索引}
 
-% \renewcommand\figurename{图}
+\renewcommand\figurename{Fig}
 
 \newcommand\codename{代码}
 
