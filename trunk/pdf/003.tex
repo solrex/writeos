@@ -127,7 +127,12 @@ GDT~所需要的信息我们都知道了，GDT~表也通过图~\ref{CHpm_descmu}
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=22, lastline=63]{../src/chapter3/1/loader.S}
 \codecaption{加载~GDT(节自 chapter3/1/loader.S)}\label{CHpm_loadgdt}
 
-图~\ref{CHpm_loadgdt}~中~\code{GdtPtr}~所指，即为~GDT~的界限和基址所存放位置。某段描述符对应的~GDT~选择子，就是其段描述符相对于~GDT~基址的位置（在我们例子里~GDT~基址为~\code{LABEL\_GDT}~指向的位置）。
+图~\ref{CHpm_loadgdt}~中~\code{GdtPtr}~所指，即为~GDT~的界限和基址所存放位置。某段描述符对应的~GDT~选择子，就是其段描述符相对于~GDT~基址的索引（在我们例子里~GDT~基址为~\code{LABEL\_GDT}~指向的位置）。这里需要注意的是，虽然我们在代码中写：
+
+\begin{Command}
+.set SelectorCode32, (LABEL_DESC_CODE32 - LABEL_GDT)
+\end{Command}
+但实际上段选择子在使用时需要右移~3~个位作为索引去寻找其对应的段描述符，段选择子的右侧~3~个位是为了标识~TI~和~RPL~的，如图~\ref{descriptor}~所示，这点我们将在第~\ref{CHpm_ldt}~节和第~\ref{CHpm_desattr}~节中详细介绍。但是这里为什么能直接用地址相减得到段选择子呢？因为段选择子的大小是~8 bit~，用地址相减的话，最右侧三个位就默认置~0~了。
 
 在图~\ref{CHpm_loadgdt}~中所示的代码，主要干了两件事：第一，将图~\ref{CHpm_demo1}~所示~demo~的段基址放入~GDT~中对应的段描述符中；第二，将~GDT~的基址放到~\code{GdtPtr}~所指的数据结构中，并加载~\code{GdtPtr}~所指的数据结构到~GDTR~寄存器中（使用~\code{lgdt}~指令）。
 
@@ -170,8 +175,12 @@ jmp dword 0x1234:0x56789ABC
 
 \section{段式存储}
 
-如果您仔细阅读了图~\ref{protected_seg}~，您就会发现图中并未提到~GDT~，而是使用的~Descriptor Table(DT)~。这是因为对于~x86~架构的~CPU~来说，~DT~总共有两个：我们上节介绍过的~GDT~和下面要介绍的~LDT~。这两个描述符表构成了~x86 CPU~段式存储的基础。
+如果您仔细阅读了图~\ref{protected_seg}~，您就会发现图中并未提到~GDT~，而是使用的~Descriptor Table(DT)~。这是因为对于~x86~架构的~CPU~来说，~DT~总共有两个：我们上节介绍过的~GDT~和下面要介绍的~LDT~。这两个描述符表构成了~x86 CPU~段式存储的基础。顾名思义，~GDT~作为全局的描述符表，只能有一个，而~LDT~作为局部描述符表，就可以有很多个，这也是以后操作系统给每个任务分配自己的存储空间的基础。
 
-\subsection{LDT~数据结构}
+\subsection{LDT~数据结构} \label{CHpm_ldt}
+
+事实上，~LDT~和~GDT~的差别非常小，~LDT~段描述符的数据结构和图~\ref{seg_desc}~所示是一样的。所不同的就是，~LDT~用指令~\code{lldt}~来加载，并且指向~LDT~描述符项的段选择子的~TI~位置必须标识为~1~，如图~\ref{descriptor}~所示。这样，操作系统才会从当前的~LDT~中去寻找对应的段描述符。
+
+\FIG{段描述符数据结构}{descriptor}{0.6\textwidth}
 
 \subsection{描述符属性} \label{CHpm_desattr}
