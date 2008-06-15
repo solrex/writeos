@@ -261,7 +261,7 @@ GetFATEntry:
     mul     %bx               /* %dx:%ax = %ax*3 */
     mov     $2,%bx
     div     %bx               /* %dx:%ax/2 */
-    cmp     $0,%bx            /* remainder %dx = 0 ? */
+    cmp     $0,%dx            /* remainder %dx = 0 ? */
     jz      LABEL_EVEN
     movb    $1,(bOdd)
 
