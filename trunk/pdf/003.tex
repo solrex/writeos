@@ -185,7 +185,7 @@ jmp dword 0x1234:0x56789ABC
 
 但这里值得注意的一点是：GDT~是由线性空间里的地址定义的，即~\code{lgdt}~指令的参数是一个线性空间的地址；而~LDT~是由~GDT~中的一个段描述符定义的，即~\code{lldt}~指令的参数是~GDT~中的一个段选择子。这是因为在加载~GDT~之前寻址模式是实模式的，而加载~GDT~后寻址模式变成保护模式寻址，将~LDT~作为~GDT~中的段使用，也方便操作系统在多个~LDT~之间切换。
 
-\subsection{描述符属性} \label{CHpm_desattr}
+\subsection{段描述符属性} \label{CHpm_desattr}
 
 我们在介绍图~\ref{seg_desc}~时，并没有完全介绍段描述符的各个~Flag~和可能的属性，这一小节就用来专门介绍段描述符的属性，按照图~\ref{seg_desc}~中的~Flag~从左向右的顺序：
 
@@ -197,7 +197,9 @@ jmp dword 0x1234:0x56789ABC
 \item{\textbf{P}}：P(segment-Present，段占用？) flag~用于标志段是否在内存中，主要供内存管理软件使用。如果~P flag~被置为~0~，说明该段目前不在内存中，该段指向的内存可以暂时被其它任务占用；如果~P flag~被置为~1~，说明该段在内存中。如果~P flag~为~0~的段被访问，处理机会产生一个~segment-not-present(\#NP)~异常。
 \item{\textbf{DPL}}：DPL(Descriptor Privilege Level)域标志着段的优先级，取值范围是从~0$\sim$3(2-bit)~，0~代表着最高的优先级。关于优先级的作用，我们将在下节讨论。
 \item{\textbf{S}}：S(descriptor type) flag~标志着该段是否系统段：置为~0~代表该段是系统段；置为~1~代表该段是代码段或者数据段。
-\item{\textbf{Type}}：Type~域是段描述符里最复杂的一个域，而且它的意义对于代码/数据段描述符和系统段/门描述符是不同的，下面我们用两张图表来展示当~Type~置为不同值时的意义。
+\item{\textbf{Type}}：Type~域是段描述符里最复杂的一个域，而且它的意义对于代码/数据段描述符和系统段/门描述符是不同的，下面我们用两张表来展示当~Type~置为不同值时的意义。
+
+表~\ref{code_data_types}~所示即为代码/数据段描述符的所有~Type~可能的值(0-15, 4-bit)以及对应的属性含意，表~\ref{sys_gate_types}~所示为系统段/门描述符的~Type~可能的值以及对应的属性含意。这两张表每个条目的内容是自明的，而且我们在后面的讨论中将不止一次会引用这两张表的内容，所以这里对每个条目暂时不加详细阐述。
 
 \begin{center}\begin{longtable}{c|c|c|c|c|c|l}
 \caption[]{代码/数据段描述符的~Type~属性列表}\label{code_data_types}\\
@@ -229,7 +231,69 @@ jmp dword 0x1234:0x56789ABC
 \hline
 \end{longtable}\end{center}
 
+\begin{center}\begin{longtable}{c|c|c|c|c|l}
+\caption[]{系统段/门描述符的~Type~属性列表}\label{sys_gate_types}\\
+\hline
+\multicolumn{5}{c|}{\textbf{Type Field}} & \textbf{Description}\bigstrut\\
+\hline
+\textbf{Decimal} & \textbf{11} & \textbf{10} & \textbf{9} & \textbf{8} & \textbf{32-Bit Mode}\\
+\hline
+0 & 0 & 0 & 0 & 0 & Reserved\\
+1 & 0 & 0 & 0 & 1 & 16-bit TSS(Available)\\
+2 & 0 & 0 & 1 & 0 & LDT\\
+3 & 0 & 0 & 1 & 1 & 16-bit TSS(Busy)\\
+4 & 0 & 1 & 0 & 0 & 16-bit Call Gate\\
+5 & 0 & 1 & 0 & 1 & Task Gate\\
+6 & 0 & 1 & 1 & 0 & 16-bit Interrupt Gate\\
+7 & 0 & 1 & 1 & 1 & 16-bit Trap Gate\\
+8 & 1 & 0 & 0 & 0 & Reserved\\
+9 & 1 & 0 & 0 & 1 & 32-bit TSS(Available)\\
+10 & 1 & 0 & 1 & 0 & Reserved\\
+11 & 1 & 0 & 1 & 1 & 32-bit TSS(Busy)\\
+12 & 1 & 1 & 0 & 0 & 32-bit Call Gate\\
+13 & 1 & 1 & 0 & 1 & Reserved\\
+14 & 1 & 1 & 1 & 0 & 32-bit Interrupt Gate\\
+15 & 1 & 1 & 1 & 1 & 32-bit Trap Gate\\
+\hline
+\end{longtable}\end{center}
+
 \end{itemize}
 
+\subsection{使用~LDT~}
 
+从目前的需求来看，对~LDT~并没有非介绍不可的理由，但是理解~LDT~的使用，对理解段式存储和处理机多任务存储空间分配有很大的帮助。所以我们在下面的代码中实现几个简单的例子：一，建立~32~位数据和堆栈两个段并将描述符添加到~GDT~中；二，添加一段简单代码，并以其段描述符为基础建立一个~LDT；三，在~GDT~中添加~LDT~的段描述符并初始化所有~DT~；四，进入保护模式下运行的~32~位代码段后，加载~LDT~并跳转执行~LDT~中包含的代码段。
 
+首先，建立~32~位全局数据段和堆栈段，并将其描述符添加到~GDT~中：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=50, lastline=62]{../src/chapter3/2/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=22, lastline=41]{../src/chapter3/2/loader.S}
+\codecaption{32~位全局数据段和堆栈段，以及对应的~GDT~结构(节自 chapter3/2/loader.S)}\label{CHpm_add_ds}
+
+其次，添加一段简单的代码，并以其描述符为基础建立一个~LDT：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=150, lastline=176]{../src/chapter3/2/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=42, lastline=49]{../src/chapter3/2/loader.S}
+\codecaption{32~位代码段，以及对应的~LDT~结构(节自 chapter3/2/loader.S)}\label{CHpm_build_ldt}
+
+第三，在~GDT~中添加~LDT~的段描述符（在图~\ref{CHpm_add_ds}~中我们已经能看到在~GDT~中添加好了~LDT~的段描述符），初始化所有~DT：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=63, lastline=149]{../src/chapter3/2/loader.S}
+\codecaption{在实模式代码段中初始化所有~DT~(节自 chapter3/2/loader.S)}\label{CHpm_init_dts}
+
+第四，进入保护模式下运行的~32~位代码段后，加载~LDT~并跳转执行~LDT~中包含的代码段：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=177, lastline=212]{../src/chapter3/2/loader.S}
+\codecaption{在保护模式代码段中加载~LDT~并跳转执行~LDT~代码段(节自 chapter3/2/loader.S)}\label{CHpm_run_ldt}
+
+为了方便阅读，整个~loader.S~的代码附在图~\ref{CHpm_loader2}~中。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2]{../src/chapter3/2/loader.S}
+\codecaption{chapter3/2/loader.S (节自 chapter3/2/loader.S)}\label{CHpm_loader2}
+
+\subsection{生成镜像并测试}
+
+使用与第~\ref{CHsmall_test}~节完全相同的方法，我们可以将代码编译并将~LOADER.BIN~拷贝到镜像文件中。利用最新的镜像文件启动~VirtualBox~我们得到图~\ref{vb_run_6}~。
+
+\FIG{第一次进入保护模式}{vb_run_6}{0.75\textwidth}
+
+可以看到，该程序首先在屏幕左侧中央（第~10~行）打印出来~``Welcome to protect mode!\^-\^''~，这是由~GDT~中的~32~位代码段打印出来的，标志着我们成功进入保护模式；然后在屏幕的第~12~行打印出来~``Aha, you jumped into a LDT segment.''~，这个是由~LDT~中的~32~位代码段打印出来的，标志着~LDT~的使用正确。因为这两个字符串都是被存储在~32~位全局数据段中，这两个字符串的成功打印也说明在~GDT~中添加的数据段使用正确。

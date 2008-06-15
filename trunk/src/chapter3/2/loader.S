@@ -24,8 +24,8 @@ LABEL_GDT:          Descriptor        0,                  0, 0
 LABEL_DESC_CODE32:  Descriptor        0, (SegCode32Len - 1), (DA_C + DA_32)
 LABEL_DESC_DATA:    Descriptor        0,      (DataLen - 1), DA_DRW
 LABEL_DESC_STACK:   Descriptor        0,         TopOfStack, (DA_DRWA + DA_32)
-LABEL_DESC_LDT:     Descriptor        0,       (LDTLen - 1), DA_LDT
 LABEL_DESC_VIDEO:   Descriptor  0xB8000,             0xffff, DA_DRW
+LABEL_DESC_LDT:     Descriptor        0,       (LDTLen - 1), DA_LDT
 
 .set GdtLen, (. - LABEL_GDT)  /* GDT Length */
 
@@ -36,16 +36,18 @@ GdtPtr: .2byte  (GdtLen - 1)  /* GDT Limit */
 .set    SelectorCode32, (LABEL_DESC_CODE32 - LABEL_GDT)
 .set    SelectorData,   (LABEL_DESC_DATA   - LABEL_GDT)
 .set    SelectorStack,  (LABEL_DESC_STACK  - LABEL_GDT)
-.set    SelectorLDT,    (LABEL_DESC_LDT    - LABEL_GDT)
 .set    SelectorVideo,  (LABEL_DESC_VIDEO  - LABEL_GDT)
+.set    SelectorLDT,    (LABEL_DESC_LDT    - LABEL_GDT)
 
+/* LDT segment */
 LABEL_LDT:
 LABEL_LDT_DESC_CODEA:   Descriptor  0, (CodeALen - 1), (DA_C + DA_32)
 
-.set    LDTLen, (. - LABEL_LDT)
-
+.set    LDTLen, (. - LABEL_LDT) /* LDT Length */
+/* LDT Selector */
 .set    SelectorLDTCodeA, (LABEL_LDT_DESC_CODEA - LABEL_LDT + SA_TIL)
 
+/* 32-bit global data segment. */
 LABEL_DATA:
 PMMessage:   .ascii "Welcome to protect mode! ^-^\0"
 LDTMessage:  .ascii "Aha, you jumped into a LDT segment.\0"
@@ -53,6 +55,7 @@ LDTMessage:  .ascii "Aha, you jumped into a LDT segment.\0"
 .set    OffsetLDTMessage, (LDTMessage - LABEL_DATA)
 .set    DataLen,          (. - LABEL_DATA)
 
+/* 32-bit global stack segment. */
 LABEL_STACK:
 .space  512, 0
 .set    TopOfStack, (. - LABEL_STACK - 1)
@@ -144,6 +147,7 @@ LABEL_BEGIN:
     .4byte  0x00000000      /* have to code it manually. It is an ugly way.*/
     .2byte  SelectorCode32  /* = jmp dword SelectorCode32:0 (NASM)         */
 
+/* 32-bit code segment for LDT */
 LABEL_CODEA:
 .code32
     mov     $(SelectorVideo), %ax
@@ -153,7 +157,7 @@ LABEL_CODEA:
     xor     %esi, %esi
     xor     %edi, %edi
     movl    $(OffsetLDTMessage), %esi
-    movl 	$((80 * 12 + 0) * 2), %edi
+    movl    $((80 * 12 + 0) * 2), %edi
     cld                         /* Clear DF flag. */
 
 /* Display a string from %esi(string offset) to %edi(video segment). */
@@ -170,6 +174,7 @@ CODEA_2:
     jmp     .
 .set    CodeALen, (. - LABEL_CODEA)
 
+/* 32-bit code segment for GDT */
 LABEL_SEG_CODE32: 
     mov     $(SelectorData), %ax
     mov     %ax, %ds                /* Data segment selector */
@@ -184,7 +189,7 @@ LABEL_SEG_CODE32:
     xor     %esi, %esi
     xor     %edi, %edi
     movl    $(OffsetPMMessage), %esi
-    movl 	$((80 * 10 + 0) * 2), %edi
+    movl    $((80 * 10 + 0) * 2), %edi
     cld                         /* Clear DF flag. */
 
 /* Display a string from %esi(string offset) to %edi(video segment). */
