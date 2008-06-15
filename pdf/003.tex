@@ -106,7 +106,7 @@ Intel~的~CPU~在保护模式下是可以选择打开分页机制的，但为了
 
 图~\ref{CHpm_descmu}~中，就利用~Descriptor~宏生成了三个段描述符，形成了一个~GDT。注意到没有，第一个段描述符是空的（参数全为~0）。这里~LABEL\_DESC\_CODE32~的段基址为~0~是因为我们无法确定它的准确位置，它将在运行期被填入。
 
-有人可能会产生疑问，段基址和段界限什么意思我们都知道了，那段属性怎么回事呢？~DA\_C, DA\_32, DA\_DRW~都是什么东西啊？是这样的，为了避免手动一个一个置段描述符中的~Flag~，我们预先定义了一些常用属性，用的时候只需要将这些属性加起来作为宏~Descriptor~的参数，就能将段描述符中的所有~Flag~置上（记得~C~语言中~fopen~的参数吗？）。这些属性的定义如下（没必要细看，用的时候再找即可）：
+有人可能会产生疑问，段基址和段界限什么意思我们都知道了，那段属性怎么回事呢？~DA\_C, DA\_32, DA\_DRW~都是什么东西啊？是这样的，为了避免手动一个一个置段描述符中的~Flag~，我们预先定义了一些常用属性，用的时候只需要将这些属性加起来作为宏~Descriptor~的参数，就能将段描述符中的所有~flag~置上（记得~C~语言中~fopen~的参数吗？）。这些属性的定义如下（没必要细看，用的时候再找即可）：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11, lastline=55]{../src/chapter3/1/pm.h}
 \codecaption{预先设置的段属性(节自 chapter3/1/pm.h)}\label{CHpm_segattr}
@@ -179,8 +179,22 @@ jmp dword 0x1234:0x56789ABC
 
 \subsection{LDT~数据结构} \label{CHpm_ldt}
 
-事实上，~LDT~和~GDT~的差别非常小，~LDT~段描述符的数据结构和图~\ref{seg_desc}~所示是一样的。所不同的就是，~LDT~用指令~\code{lldt}~来加载，并且指向~LDT~描述符项的段选择子的~TI~位置必须标识为~1~，如图~\ref{descriptor}~所示。这样，操作系统才会从当前的~LDT~中去寻找对应的段描述符。
-
 \FIG{段描述符数据结构}{descriptor}{0.6\textwidth}
 
+事实上，~LDT~和~GDT~的差别非常小，~LDT~段描述符的数据结构和图~\ref{seg_desc}~所示是一样的。所不同的就是，~LDT~用指令~\code{lldt}~来加载，并且指向~LDT~描述符项的段选择子的~TI~位置必须标识为~1~，如图~\ref{descriptor}~所示。这样，操作系统才会从当前的~LDT~中去寻找对应的段描述符。
+
+但这里值得注意的一点是：GDT~是由线性空间里的地址定义的，即~\code{lgdt}~指令的参数是一个线性空间的地址；而~LDT~是由~GDT~中的一个段描述符定义的，即~\code{lldt}~指令的参数是~GDT~中的一个段选择子。这是因为在加载~GDT~之前寻址模式是实模式的，而加载~GDT~后寻址模式变成保护模式寻址，将~LDT~作为~GDT~中的段使用，也方便操作系统在多个~LDT~之间切换。
+
 \subsection{描述符属性} \label{CHpm_desattr}
+
+我们在介绍图~\ref{seg_desc}~时，并没有完全介绍段描述符的各个~Flag~和可能的属性，这一小节就用来专门介绍段描述符的属性，按照图~\ref{seg_desc}~中的~Flag~从左向右的顺序：
+
+\begin{itemize}
+\item{\textbf{G}}: G（Granularity，粒度）：如果~G flag~置为~0~，段的大小以字节为单位，段长度范围是~1 byte $\sim$ 1 MB~；如果~G flag~置为~1~，段的大小以~4 KB~为单位，段长度范围是~4 KB $\sim$ 4 GB~。
+\item{\textbf{D/B}}：D/B（Default operation size/Default stack pionter size and/or upper Bound， 默认操作大小），其意思取决于段描述符是代码段、数据段或者堆栈段。该~flag~置为~0~代表代码段/数据段为~16~位的；置为~1~代表该段是~32~位的。
+\item{\textbf{L}}：L（Long, 长），~L flag~是~IA-32e(Extended Memory 64 Technology)~模式下使用的标志。该~flag~置为~1~代表该段是正常的~64~位的代码段；置为~0~代表在兼容模式下运行的代码段。在~IA-32~架构下，该位是保留位，并且永远被置为~0~。
+\item{\textbf{AVL}}：保留给操作系统软件使用的位。
+\item{\textbf{P}}：P（segment-Present，段占用？） flag~用于标志段是否在内存中，主要供内存管理软件使用。如果~P flag~被置为~0~，说明该段目前不在内存中，该段指向的内存可以暂时被其它任务占用；如果~P flag~被置为~1~，说明该段在内存中。如果~P flag~为~0~的段被访问，处理机会产生一个~segment-not-present(#NP)~异常。
+\item{\textbf{DPL}}：DPL(Descriptor Privilege Level)~
+\end{itemize}
+
