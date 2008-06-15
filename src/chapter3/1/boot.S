@@ -153,7 +153,7 @@ LABEL_GOON_LOADING_FILE:
     call    ReadSector
     pop     %ax             /* Got index of this sector in FAT */
     call    GetFATEntry
-    cmp     $0x0ff,%ax
+    cmp     $0x0fff,%ax
     jz      LABEL_FILE_LOADED
     push    %ax             /* Save index of this sector in FAT */
     mov     $RootDirSectors,%dx
