@@ -190,11 +190,46 @@ jmp dword 0x1234:0x56789ABC
 我们在介绍图~\ref{seg_desc}~时，并没有完全介绍段描述符的各个~Flag~和可能的属性，这一小节就用来专门介绍段描述符的属性，按照图~\ref{seg_desc}~中的~Flag~从左向右的顺序：
 
 \begin{itemize}
-\item{\textbf{G}}: G（Granularity，粒度）：如果~G flag~置为~0~，段的大小以字节为单位，段长度范围是~1 byte $\sim$ 1 MB~；如果~G flag~置为~1~，段的大小以~4 KB~为单位，段长度范围是~4 KB $\sim$ 4 GB~。
-\item{\textbf{D/B}}：D/B（Default operation size/Default stack pionter size and/or upper Bound， 默认操作大小），其意思取决于段描述符是代码段、数据段或者堆栈段。该~flag~置为~0~代表代码段/数据段为~16~位的；置为~1~代表该段是~32~位的。
-\item{\textbf{L}}：L（Long, 长），~L flag~是~IA-32e(Extended Memory 64 Technology)~模式下使用的标志。该~flag~置为~1~代表该段是正常的~64~位的代码段；置为~0~代表在兼容模式下运行的代码段。在~IA-32~架构下，该位是保留位，并且永远被置为~0~。
+\item{\textbf{G}}: G(Granularity，粒度)：如果~G flag~置为~0~，段的大小以字节为单位，段长度范围是~$1 byte\sim 1 MB$~；如果~G flag~置为~1~，段的大小以~4 KB~为单位，段长度范围是~$4 KB \sim 4 GB$~。
+\item{\textbf{D/B}}：D/B(Default operation size/Default stack pionter size and/or upper Bound， 默认操作大小)，其意思取决于段描述符是代码段、数据段或者堆栈段。该~flag~置为~0~代表代码段/数据段为~16~位的；置为~1~代表该段是~32~位的。
+\item{\textbf{L}}：L(Long, 长)，~L flag~是~IA-32e(Extended Memory 64 Technology)~模式下使用的标志。该~flag~置为~1~代表该段是正常的~64~位的代码段；置为~0~代表在兼容模式下运行的代码段。在~IA-32~架构下，该位是保留位，并且永远被置为~0~。
 \item{\textbf{AVL}}：保留给操作系统软件使用的位。
-\item{\textbf{P}}：P（segment-Present，段占用？） flag~用于标志段是否在内存中，主要供内存管理软件使用。如果~P flag~被置为~0~，说明该段目前不在内存中，该段指向的内存可以暂时被其它任务占用；如果~P flag~被置为~1~，说明该段在内存中。如果~P flag~为~0~的段被访问，处理机会产生一个~segment-not-present(#NP)~异常。
-\item{\textbf{DPL}}：DPL(Descriptor Privilege Level)~
+\item{\textbf{P}}：P(segment-Present，段占用？) flag~用于标志段是否在内存中，主要供内存管理软件使用。如果~P flag~被置为~0~，说明该段目前不在内存中，该段指向的内存可以暂时被其它任务占用；如果~P flag~被置为~1~，说明该段在内存中。如果~P flag~为~0~的段被访问，处理机会产生一个~segment-not-present(\#NP)~异常。
+\item{\textbf{DPL}}：DPL(Descriptor Privilege Level)域标志着段的优先级，取值范围是从~0$\sim$3(2-bit)~，0~代表着最高的优先级。关于优先级的作用，我们将在下节讨论。
+\item{\textbf{S}}：S(descriptor type) flag~标志着该段是否系统段：置为~0~代表该段是系统段；置为~1~代表该段是代码段或者数据段。
+\item{\textbf{Type}}：Type~域是段描述符里最复杂的一个域，而且它的意义对于代码/数据段描述符和系统段/门描述符是不同的，下面我们用两张图表来展示当~Type~置为不同值时的意义。
+
+\begin{center}\begin{longtable}{c|c|c|c|c|c|l}
+\caption[]{代码/数据段描述符的~Type~属性列表}\label{code_data_types}\\
+\hline
+\multicolumn{5}{c|}{\textbf{Type Field}} & \textbf{Descriptor Type} & \textbf{Description}\bigstrut\\
+\cline{1-5}
+\textbf{Decimal} & \textbf{11} & \textbf{10} & \textbf{9} & \textbf{8} & & \\
+        &    &  \textbf{E} & \textbf{W} & \textbf{A} & & \\
+\hline
+0 & 0 & 0 & 0 & 0 & Data & Read-Only\\
+1 & 0 & 0 & 0 & 1 & Data & Read-Only, Accessed\\
+2 & 0 & 0 & 1 & 0 & Data & Read/Write\\
+3 & 0 & 0 & 1 & 1 & Data & Read/Write, Accessed\\
+4 & 0 & 1 & 0 & 0 & Data & Read-Only, Expand-down\\
+5 & 0 & 1 & 0 & 1 & Data & Read-Only, Expand-down, Accessed\\
+6 & 0 & 1 & 1 & 0 & Data & Read/Write, Expand-down\\
+7 & 0 & 1 & 1 & 1 & Data & Read/Write, Expand-down, Accessed\\
+\hline
+        &    &  \textbf{C} & \textbf{R} & \textbf{A} & & \\
+\hline
+8 & 1 & 0 & 0 & 0 & Code & Execute-Only\\
+9 & 1 & 0 & 0 & 1 & Code & Execute-Only, Accessed\\
+10 & 1 & 0 & 1 & 0 & Code & Execute/Read\\
+11 & 1 & 0 & 1 & 1 & Code & Execute/Read, Accessed\\
+12 & 1 & 1 & 0 & 0 & Code & Execute-Only, Conforming\\
+13 & 1 & 1 & 0 & 1 & Code & Execute-Only, Conforming, Accessed\\
+14 & 1 & 1 & 1 & 0 & Code & Execute/Read-Only, Conforming\\
+15 & 1 & 1 & 1 & 1 & Code & Execute/Read-Only, Conforming, Accessed\\
+\hline
+\end{longtable}\end{center}
+
 \end{itemize}
+
+
 
