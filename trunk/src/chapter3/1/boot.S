@@ -256,14 +256,11 @@ GetFATEntry:
     sub     $0x0100,%ax
     mov     %ax,%es           /* Left 4K bytes for FAT */
     pop     %ax
-    movb    $0,(bOdd)
     mov     $3,%bx
     mul     %bx               /* %dx:%ax = %ax*3 */
     mov     $2,%bx
     div     %bx               /* %dx:%ax/2 */
-    cmp     $0,%dx            /* remainder %dx = 0 ? */
-    jz      LABEL_EVEN
-    movb    $1,(bOdd)
+    movb    %dl, (bOdd)       /* store remainder %dx in label bOdd. */
 
 LABEL_EVEN:
     xor     %dx,%dx           /* Now %ax is the offset of FATEntry in FAT */
@@ -276,9 +273,9 @@ LABEL_EVEN:
     call    ReadSector        /* may be in 2 sectors. */
     pop     %dx
     add     %dx,%bx
-    mov     %es:(%bx),%ax
-    cmpb    $1,(bOdd)
-    jnz     LABEL_EVEN_2
+    mov     %es:(%bx),%ax     /* read FAT entry by word(2 bytes) */
+    cmpb    $0,(bOdd)         /* remainder %dx(see above) == 0 ?*/
+    jz      LABEL_EVEN_2      /* NOTE: %ah: high address byte, %al: low byte */
     shr     $4,%ax
 
 LABEL_EVEN_2:
