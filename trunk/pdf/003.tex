@@ -290,10 +290,14 @@ LDT~的选择子是与~GDT~选择子有明显区别的，图~\ref{descriptor}~�
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=63, lastline=149]{../src/chapter3/2/loader.S}
 \codecaption{在实模式代码段中初始化所有~DT~(节自 chapter3/2/loader.S)}\label{CHpm_init_dts}
 
+初始化各个段描述符的方式与上一节介绍的初始化~GDT~描述符的方式没有什么本质不同，因为属性都已经预设好，运行时只需要将段地址填入描述符中的地址域即可，代码都是重复的。
+
 第四，进入保护模式下运行的~32~位代码段后，加载~LDT~并跳转执行~LDT~中包含的代码段：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=177, lastline=212]{../src/chapter3/2/loader.S}
 \codecaption{在保护模式代码段中加载~LDT~并跳转执行~LDT~代码段(节自 chapter3/2/loader.S)}\label{CHpm_run_ldt}
+
+在~\code{LABEL\_SEG\_CODE32}~中前几行，我们可以看到非常熟悉的汇编指令，和一般汇编程序开头初始化数据/代码/堆栈段寄存器的指令非常像，只不过这里赋给几个寄存器的参数都是段选择子，而不是一般的地址。该代码段剩下的内容和前面图~\ref{CHpm_build_ldt}~中~\code{LABEL\_CODEA}~一样，都是打印一个字符串，只不过这里选择在第~10~行（屏幕左侧中央）打印。
 
 为了方便阅读，整个~loader.S~的代码附在图~\ref{CHpm_loader2}~中。
 
@@ -306,4 +310,7 @@ LDT~的选择子是与~GDT~选择子有明显区别的，图~\ref{descriptor}~�
 
 \FIG{第一次进入保护模式}{vb_run_6}{0.75\textwidth}
 
-可以看到，该程序首先在屏幕左侧中央（第~10~行）打印出来~``Welcome to protect mode!\^-\^''~，这是由~GDT~中的~32~位代码段打印出来的，标志着我们成功进入保护模式；然后在屏幕的第~12~行打印出来~``Aha, you jumped into a LDT segment.''~，这个是由~LDT~中的~32~位代码段打印出来的，标志着~LDT~的使用正确。因为这两个字符串都是被存储在~32~位全局数据段中，这两个字符串的成功打印也说明在~GDT~中添加的数据段使用正确。
+可以看到，该程序首先在屏幕左侧中央（第~10~行）打印出来~``Welcome to protect mode!\^-\^''~，这是由~GDT~中的~32~位代码段~\code{LABEL\_SEG\_CODE32}~打印出来的，标志着我们成功进入保护模式；然后在屏幕的第~12~行打印出来~``Aha, you jumped into a LDT segment.''~，这个是由~LDT~中的~32~位代码段~\code{LABEL\_CODEA}~打印出来的，标志着~LDT~的使用正确。因为这两个字符串都是被存储在~32~位全局数据段中，这两个字符串的成功打印也说明在~GDT~中添加的数据段使用正确。
+
+\subsection{段式存储总结}
+
