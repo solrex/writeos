@@ -464,7 +464,14 @@ DIR\_FileSize & 0x1c & 4  & 文件大小 & 0x000000f\\
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=246, lastline=291]{../src/chapter2/2/boot.S}
 \codecaption{寻找~FAT~项的函数~GetFATEntry~(节自 chapter2/2/boot.S)}\label{CHsmall_GetFATEntry}
 
-这样，我们就可以将~loader.bin~整个文件加载到内存中去了，见图~\ref{CHsmall_load}。
+这里有一个对扇区号判断是奇是偶的问题，因为~FAT12~的每个表项是~12~位，即~1.5~个字节，而我们这里是用字（2~字节）来读每个表项的，那么读到的表项可能在高~12~位或者低~12~位，就要用扇区号的奇偶来判断应该取哪~12~位。由于扇区号*3/2~的商就是对应表项的偏移量，余数代表着是否多半个字节，如果存在余数~1~，则取高~12~位为表项值；如果余数为~0，则取低~12~位作为表项值。举个具体的例子，下面是一个真实的~FAT12~表项内容（两行是分别用字节和字来表示的结果）：
+\begin{Command}
+0000200: 00 00 00 00 40 00 FF 0F
+0000200:  0000  0000  0040  0FFF
+\end{Command}
+我们来找扇区号~3~对应的~FAT12~表项。3*3/2 = 4...1，按照字来读取偏移~4~对应的地址，我们得到~0040。由于扇区号~3~是奇数，有余数，则应取高~12~位作为~FAT12~表项内容，将~0040~右移~4~位再算术与~0x0fff，我们得到~0x0004，即为对应的~FAT12~表项，说明扇区号~3~的后继扇区号是~4~。
+
+然后，我们就可以将~loader.bin~整个文件加载到内存中去了，见图~\ref{CHsmall_load}。
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=140, lastline=168]{../src/chapter2/2/boot.S}
 \codecaption{加载~loader.bin~的代码(节自 chapter2/2/boot.S)}\label{CHsmall_load}
