@@ -269,11 +269,21 @@ jmp dword 0x1234:0x56789ABC
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=22, lastline=41]{../src/chapter3/2/loader.S}
 \codecaption{32~位全局数据段和堆栈段，以及对应的~GDT~结构(节自 chapter3/2/loader.S)}\label{CHpm_add_ds}
 
+在图~\ref{CHpm_add_ds}~中，我们首先建立了一个全局的数据段，并在数据段里放置了两个字符串，分别用来进入保护模式后和跳转到~LDT~指向的代码段后作为信息输出。然后又建立了一个全局的堆栈段，为堆栈段预留了~512~字节的空间，并将栈顶设置为距栈底~511~字节处。然后与上节介绍的类似，将数据段和堆栈段的段描述符添加到~GDT~中，并设置好对应的段选择子。
+
+要注意到数据段、堆栈段和代码段的段描述符属性不尽相同。数据段的段描述符属性是~\code{DA\_DRW}~，回忆我们前面~pm.h~的内容（图~\ref{CHpm_segattr}~），~\code{DA\_DRW}~的内容是~\code{0x92}，用二进制就是~\code{10010010}，其后四位就对应着图~\ref{code_data_types}~中的第二~2(0010)~项，说明这个段是可读写的数据段；前四位对应着~\code{P|DPL|S}~三个~flag~，即~\code{P:1, DPL:00, S:1}~，与第~\ref{CHpm_desattr}~结合理解，意思就是该段在内存中，为最高的优先级，非系统段。所以我们可以看到~pm.h~中的各个属性变量定义，就是将二进制的属性值用可理解的变量名表示出来，在用的时候直接加上变量即可。
+
+同理我们也可以分别来理解~GDT~中堆栈段和代码段描述符的属性定义。因为不同类型的属性使用的是段描述符中不同的位，所以不同类型的属性可以直接相加得到复合的属性值，例如堆栈段的~\code{(DA\_DRWA + DA\_32)}~，其意思类似于~\code{C++}~中~\code{fstream}~打开文件时可以对模式进行算术或（\code{ios\_base::in | ios\_base::out}）来得到复合参数。
+
 其次，添加一段简单的代码，并以其描述符为基础建立一个~LDT：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=150, lastline=176]{../src/chapter3/2/loader.S}
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=42, lastline=49]{../src/chapter3/2/loader.S}
 \codecaption{32~位代码段，以及对应的~LDT~结构(节自 chapter3/2/loader.S)}\label{CHpm_build_ldt}
+
+\code{LABEL\_CODEA}~就是我们为~LDT~建立的简单代码段，其作用就是操作显存在屏幕的第~12~行开始用红色的字打印出偏移~\code{OffsetLDTMessage}~指向的全局数据段中的字符串。下面就是以~\code{LABEL\_CODEA}~为基础建立的~LDT~，从~LDT~的结构来说，与~GDT~没有区别，但是我们不用像~\code{GdtPtr}~再建立一个~\code{LdtPtr}~，因为~LDT~实际上是在~GDT~中定义的一个段，不用实模式的线性地址表示。
+
+LDT~的选择子是与~GDT~选择子有明显区别的，图~\ref{descriptor}~清楚地解释了这一点，所以指向~LDT~的选择子都应该将~TI~位置~1~，在图~\ref{CHpm_build_ldt}~的最后一行也实现了这一操作。
 
 第三，在~GDT~中添加~LDT~的段描述符（在图~\ref{CHpm_add_ds}~中我们已经能看到在~GDT~中添加好了~LDT~的段描述符），初始化所有~DT：
 

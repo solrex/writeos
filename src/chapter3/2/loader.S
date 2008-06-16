@@ -32,7 +32,7 @@ LABEL_DESC_LDT:     Descriptor        0,       (LDTLen - 1), DA_LDT
 GdtPtr: .2byte  (GdtLen - 1)  /* GDT Limit */
         .4byte  0             /* GDT Base */
 
-/* GDT Selector */
+/* GDT Selector(TI flag clear) */
 .set    SelectorCode32, (LABEL_DESC_CODE32 - LABEL_GDT)
 .set    SelectorData,   (LABEL_DESC_DATA   - LABEL_GDT)
 .set    SelectorStack,  (LABEL_DESC_STACK  - LABEL_GDT)
@@ -44,7 +44,7 @@ LABEL_LDT:
 LABEL_LDT_DESC_CODEA:   Descriptor  0, (CodeALen - 1), (DA_C + DA_32)
 
 .set    LDTLen, (. - LABEL_LDT) /* LDT Length */
-/* LDT Selector */
+/* LDT Selector (TI flag set)*/
 .set    SelectorLDTCodeA, (LABEL_LDT_DESC_CODEA - LABEL_LDT + SA_TIL)
 
 /* 32-bit global data segment. */
