@@ -76,9 +76,8 @@ LABEL_BEGIN:
     movl    %eax, %cr0
 
     /* Mixed-Size Jump. */
-    .2byte  0xea66          /* GAS can not handle mixed-size jump :(. We   */
-    .4byte  0x00000000      /* have to code it manually. It is an ugly way.*/
-    .2byte  SelectorCode32  /* = jmp dword SelectorCode32:0 (NASM)         */
+    ljmpl $SelectorCode32, $0       /* Thanks to earthengine@gmail, I got */
+                                    /* this mixed-size jump insn of gas.  */
 
 LABEL_SEG_CODE32: 
 .code32

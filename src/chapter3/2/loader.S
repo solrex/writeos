@@ -143,9 +143,9 @@ LABEL_BEGIN:
     movl    %eax, %cr0
 
     /* Mixed-Size Jump. */
-    .2byte  0xea66          /* GAS can not handle mixed-size jump :(. We   */
-    .4byte  0x00000000      /* have to code it manually. It is an ugly way.*/
-    .2byte  SelectorCode32  /* = jmp dword SelectorCode32:0 (NASM)         */
+    ljmpl $SelectorCode32, $0       /* Thanks to earthengine@gmail, I got */
+                                    /* this mixed-size jump insn of gas.  */
+
 
 /* 32-bit code segment for LDT */
 LABEL_CODEA:
@@ -164,10 +164,10 @@ LABEL_CODEA:
 CODEA_1:
     lodsb                       /* Load a byte from source */
     test    %al, %al
-    jz      CODE32_2
+    jz      CODEA_2
     mov     %ax, %gs:(%edi)
     add     $2, %edi
-    jmp     CODE32_1
+    jmp     CODEA_1
 CODEA_2:
 
     /* Stop here, infinate loop. */
