@@ -155,7 +155,14 @@ GDT~所需要的信息我们都知道了，GDT~表也通过图~\ref{CHpm_descmu}
 \begin{Command}
 jmp dword 0x1234:0x56789ABC
 \end{Command}
-但是很遗憾的是，GAS~没有提供这条指令的实现，所以我们必须用~.byte~伪代码直接写二进制指令（如图~\ref{CHpm_mixedjmp}），比较庆幸的是，我们也只需要用到它一次。
+NASM~的手册中说~GAS~没有提供这条指令的实现，我就用~.byte~伪代码直接写了二进制指令：
+\begin{Command}
+/* Mixed-Size Jump. */
+.2byte  0xea66
+.4byte  0x00000000
+.2byte  SelectorCode32
+\end{Command}
+但是有位朋友提醒我说现在的~GAS~已经支持混合字长跳转指令（如图~\ref{CHpm_mixedjmp}），看来~NASM~的手册好久没有维护喽~\smiley~。
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=77, lastline=82]{../src/chapter3/1/loader.S}
 \codecaption{混合字长跳转指令(节自 chapter3/1/loader.S)}\label{CHpm_mixedjmp}
