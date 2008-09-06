@@ -331,3 +331,16 @@ x86~使用全局描述符表(GDT)和局部描述符表(LDT)来实现不同需求
 
 \section{特权级}
 
+\subsection{不合法的访问请求示例}
+
+我们来看一个不合法的访问请求的例子，在上一节的~loader.S~中把~\code{LABEL\_DESC\_DATA}~对应的描述符的~\code{DPL}~设置为~1：
+\begin{Command}
+LABEL_DESC_DATA:    Descriptor        0,      (DataLen - 1), (DA_DRW + DA_DPL1)
+\end{Command}
+
+然后将该数据段对应的段选择子的~RPL~设置为~3：
+\begin{Command}
+.set    SelectorData,   (LABEL_DESC_DATA   - LABEL_GDT + SA_RPL3)
+\end{Command}
+
+再~make, sudo make copy~一下，用~VirtualBox~加载生成的镜像运行一下，就会发现虚拟机黑屏一会儿就会退出，主窗口中显示该虚拟机~Aborted~。这是因为我们违反特权级的规则，使用~RPL=3~的选择子去访问~DPL=1~的段，这个不合法的访问请求引起处理机产生常规保护错误~\#GP~。而我们又没有准备对应的异常处理模块，当处理机找不到异常处理程序时就只好退出了。
