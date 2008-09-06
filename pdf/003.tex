@@ -42,7 +42,7 @@ Intel~公司在~1978~年发布了一款~16~位字长~CPU: 8086~，最高主频~5
 
 前面提到过，实模式下的地址线是~20~位的，所以实模式下的寻址模式使用分段方式来解决~16~位字长机器提供~20~位地址空间的问题。这个分段方法需要程序员在编制程序的过程中将存储器划分成段，每个段内的地址空间是线性增长的，最大可达~64K($2^16$)，这样段內地址就可以使用~16~位表示。段基址（~20-bit~）的最低~4~位必须是~0~，这样段基址就可以使用~16~位段地址来表示，需要时将段地址左移~4~位就得到段起始地址。除了便于寻址之外，分段还有一个好处，就是将程序的代码段、数据段和堆栈段等隔离开，避免相互之间产生干扰。
 
-当计算某个单元的物理地址时，比如汇编语言中的一个~Label~，就通过段地址（~16-bit~）左移~4~位得到段基址（~20-bit~），再加上该单元~(Label)~的段內偏移量（~16-bit~）来得到其物理地址（~20-bit~），如图~\ref{rm_addr}~所示。
+当计算某个单元的物理地址时，比如汇编语言中的一个~Label~，就通过段地址（~16-bit~）左移~4~位得到段基址（~20-bit~），再加上该单元（~Label~）的段內偏移量（~16-bit~）来得到其物理地址（~20-bit~），如图~\ref{rm_addr}~所示。
 
 \begin{figure*}[!t]
 \centerline{\subfloat[实模式寻址模型]{\includegraphics[width=.48\textwidth,keepaspectratio]{rm_addr}%
@@ -99,7 +99,7 @@ Intel~的~CPU~在保护模式下是可以选择打开分页机制的，但为了
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=56, lastline=70]{../src/chapter3/1/pm.h}
 \codecaption{自动生成段描述符的宏定义(节自 chapter3/1/pm.h)}\label{CHpm_descm}
 
-图~\ref{CHpm_descm}~中所示，就是自动生成段描述符的汇编宏定义。我们只需要给宏~Descriptor~三个参数：Base(段基址), Limit(段界限[段长度]), Attr(段属性)，Descriptor~就会自动将三者展开放到段描述符中对应的位置。看看我们在程序中怎么使用这个宏：
+图~\ref{CHpm_descm}~中所示，就是自动生成段描述符的汇编宏定义。我们只需要给宏~Descriptor~三个参数：Base（段基址）, Limit（段界限[段长度]）, Attr（段属性），Descriptor~就会自动将三者展开放到段描述符中对应的位置。看看我们在程序中怎么使用这个宏：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=21, lastline=26]{../src/chapter3/1/loader.S}
 \codecaption{自动生成段描述符的宏使用示例(节自 chapter3/1/loader.S)}\label{CHpm_descmu}
@@ -327,9 +327,23 @@ LDT~的选择子是与~GDT~选择子有明显区别的，图~\ref{descriptor}~�
 
 由于保护模式使用段描述符来保存段信息而不是像实模式一样直接使用段地址，在段描述符中就可以添加一些属性来限制对段的访问权限，如我们在第~\ref{CHpm_desattr}~节中讨论的那样。这样，通过在访问段时检查权限和属性，就能做到对程序段的更完善保护和更好的内存管理。
 
-x86~使用全局描述符表(GDT)和局部描述符表(LDT)来实现不同需求下对程序段的控制，操作系统使用唯一的一个~GDT~来维护一些和系统密切相关的段描述符信息，为不同的任务使用不同的~LDT~来实现对多任务内存管理的支持，简化了任务切换引起的内存切换的难度。
+x86~使用全局描述符表（GDT）和局部描述符表（LDT）来实现不同需求下对程序段的控制，操作系统使用唯一的一个~GDT~来维护一些和系统密切相关的段描述符信息，为不同的任务使用不同的~LDT~来实现对多任务内存管理的支持，简化了任务切换引起的内存切换的难度。
 
 \section{特权级}
+
+特权级是为了保护处理机资源而引入的概念。将同一个处理机上执行的不同任务赋予不同的特权级，可以控制该任务可以访问的资源，比如内存地址范围、输入输出端口、和一些特殊指令的使用。在~x86~体系结构中，共有~4~个特权级别，0~代表最高特权级，3~代表最低特权级。由于在~x86~体系结构中，n~级可以访问的资源均可以被~0~到~n~级访问，这个模式被称作~ring~模式，相应地我们也将~x86~的对应特权级称作~ring n。
+
+现代的~PC~操作系统的内核一般工作在~ring 0~下，拥有最高的特权级，应用程序一般工作在~ring 3~下，拥有最低的优先级。虽然~x86~体系结构提供了~4~个特权级，但操作系统并不需要全部使用到这~4~个级别，可以根据需要来选择使用几个特权级。比如~Linux/Unix~和~Windows NT~，都是只使用了~0~级和~3~级，分别用于内核模式和用户模式；而~DOS~则只使用了~0~级。
+
+在~x86~体系结构中，和特权级有关的有几个术语：
+
+\begin{itemize}
+\item{\textbf{DPL(Descriptor Privilege Level)}}：描述符特权级，定义于段描述符中。它限制了可以访问此段资源的最低特权级。
+\item{\textbf{RPL(Requested Privilege Level)}}：请求特权级，定义于段选择子中。它限制了这个选择子可访问资源的最高特权级。
+\item{\textbf{CPL(Current Privilege Level)}}：当前特权级，位于代码段寄存器~CS~中。它代表当前执行程序的特权级，通常情况下与当前代码段的描述符特权级相同。当程序跳转到不同特权级的代码段时，CPL~会随之修改。
+\end{itemize}
+
+处理机通过将~CPL~与被访问段的~RPL~和~DPL~其中最大者（数值意义上）相比较，来判断程序是否有权访问另外一个段。如果~$CPL>\max{(RPL, DPL)}~$，那么该访问就是不合法的，处理机就会产生一个~\#GP(General Protection Fault，常规保护错误，中断的一种)。
 
 \subsection{不合法的访问请求示例}
 
@@ -343,4 +357,4 @@ LABEL_DESC_DATA:    Descriptor        0,      (DataLen - 1), (DA_DRW + DA_DPL1)
 .set    SelectorData,   (LABEL_DESC_DATA   - LABEL_GDT + SA_RPL3)
 \end{Command}
 
-再~make, sudo make copy~一下，用~VirtualBox~加载生成的镜像运行一下，就会发现虚拟机黑屏一会儿就会退出，主窗口中显示该虚拟机~Aborted~。这是因为我们违反特权级的规则，使用~RPL=3~的选择子去访问~DPL=1~的段，这个不合法的访问请求引起处理机产生常规保护错误~\#GP~。而我们又没有准备对应的异常处理模块，当处理机找不到异常处理程序时就只好退出了。
+再~make, sudo make copy~一下，用~VirtualBox~加载生成的镜像运行一下，就会发现虚拟机黑屏一会儿就会退出，主窗口中显示该虚拟机~Aborted~。这是因为我们违反特权级的规则，使用~RPL=3~的选择子去访问~DPL=1~的段，这个不合法的访问请求引起处理机产生常规保护错误~\#GP~。而我们又没有准备对应的中断处理模块，当处理机找不到中断处理程序时就只好退出了。
