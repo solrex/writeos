@@ -1,4 +1,32 @@
 
+2008.09.07 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/3/pm.h,
+	* src/chapter3/3/boot.S,
+	* src/chapter3/3/loader.S,
+	* src/chapter3/3/Makefile,
+	* src/chapter3/3/solrex_x86_boot.ld,
+	* src/chapter3/3/solrex_x86_dos.ld: Source for chapter 3.4.
+	* src/chapter3/3/bochsrc.bxrc.
+	* pdf/images/callgate_desc.eps,
+	* pdf/images/vb_run_7.eps,
+	* pdf/images/vb_run_8.eps,
+	* pdf/images/vb_main_4.eps: Pictures for chapter 3.4.
+	* pdf/003.tex: Updated to chapter 3.4.
+
+2008.06.16 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/2/pm.h,
+	* src/chapter3/2/boot.S,
+	* src/chapter3/2/loader.S,
+	* src/chapter3/2/Makefile,
+	* src/chapter3/2/solrex_x86_boot.ld,
+	* src/chapter3/2/solrex_x86_dos.ld: Source for chapter 3.3.
+	* src/chapter3/2/bochsrc.bxrc.
+	* pdf/images/seg_selector.eps,
+	* pdf/images/vb_run_6.eps: Pictures for chapter 3.3.
+	* pdf/003.tex: Updated to chapter 3.3.
+
 2008.05.13 Wenbo Yang <solrex@gmail.com>
 
 	* Change dir hierarchy:
@@ -9,7 +37,7 @@
 	* src/chapter3/1/loader.S,
 	* src/chapter3/1/Makefile,
 	* src/chapter3/1/solrex_x86_boot.ld,
-	* src/chapter3/1/solrex_x86_dos.ld: Source for chapter 3 part 1.
+	* src/chapter3/1/solrex_x86_dos.ld: Source for chapter 3.2.
 	* src/chapter3/1/bochsrc.bxrc.
 	* pdf/003.tex: Tex source for chapter 3.
 
@@ -30,7 +58,7 @@
 	* pdf/000-cover.tex: Cover page.
 	* pdf/000-foreword.tex: Foreword page.
 	* pdf/000-preface.tex: Preface page.
-    * pdf/001.tex,
+	* pdf/001.tex,
 	* pdf/002.tex: Chapters.
 	* Makefile: Makefile to build this book.
 	* pdf/images/*: Pictures.
@@ -40,7 +68,7 @@
 	* NEWS: Start this project.
 	* chapter2/1/boot.asm: Source from Yu's book.
 	* chapter2/1/boot.S,
-    * chapter2/1/Makefile,
+	* chapter2/1/Makefile,
 	* chapter2/1/solrex_x86.ld: Source for chapter 2, part 1.
 	* chapter2/1/solrex.img: Sample floppy image file.
 	* chapter2/2/boot.asm,

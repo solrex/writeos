@@ -369,7 +369,7 @@ LABEL_DESC_DATA:    Descriptor        0,      (DataLen - 1), (DA_DRW + DA_DPL1)
 
 \FIGFIX{虚拟退出后~VBox~主窗口显示~Abort}{vb_main_4}{0.75\textwidth}
 
-再~make, sudo make copy~一下，用~VirtualBox~加载生成的镜像运行一下，就会发现虚拟机黑屏一会儿就会退出（如图~\ref{vb_run_7}），然后~VirtualBox~主窗口中显示该虚拟机~Aborted（如图~\ref{vb_main_4}）。这是因为我们违反特权级的规则，使用~RPL=3~的选择子去访问~DPL=1~的段，这个不合法的访问请求引起处理机产生常规保护异常（\texttt{\#}GP）。而我们又没有准备对应的异常处理模块，当处理机找不到异常处理程序时就只好退出了。
+再~\code{make, sudo make copy}，用~VirtualBox~加载生成的镜像运行一下，就会发现虚拟机黑屏一会儿就会退出（如图~\ref{vb_run_7}），然后~VirtualBox~主窗口中显示该虚拟机~Aborted（如图~\ref{vb_main_4}）。这是因为我们违反特权级的规则，使用~RPL=3~的选择子去访问~DPL=1~的段，这个不合法的访问请求引起处理机产生常规保护异常（\texttt{\#}GP）。而我们又没有准备对应的异常处理模块，当处理机找不到异常处理程序时就只好退出了。
 
 
 \subsection{控制权转移的特权级检查}
@@ -408,6 +408,31 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 \FIG{调用门描述符}{callgate_desc}{.9\textwidth}
 
-门其实也是一种描述符，和段描述符类似。调用门描述符的数据结构如图~\ref{callgate_desc}~所示。其实看起来这个调用门描述符的数据结构要比段描述符简单一些。
+门其实也是一种描述符，和段描述符类似。调用门描述符的数据结构如图~\ref{callgate_desc}~所示。其实看起来这个调用门描述符的数据结构要比段描述符简单一些，至少从它的属性来说，没有段描述符多。我们仍然只关注最重要的部分：首先是段选择子（Segment Selector），指定了通过这个调用门访问的代码段；其次是段偏移量（Offset in Segment），指定了要访问代码段中的某个入口偏移；描述符特权级（DPL），代表此门描述符的特权级；P，代表此调用门是否可用。
+
+简单来说，调用门描述了由一个段选择子和一个偏移所指定的目标代码段中的一个地址，程序通过调用门将转移到这个地址。下面我们通过一个简单的例子来介绍一下调用门的基本使用方法。
+
+为了使用调用门，我们首先要给出一个目标段，然后用该目标段的信息初始化调用门的门描述符，最后用调用门的门选择子实现门调用。
+
+添加一个目标段我们已经做过很多次，非常简单。首先在上一节~loader.S~最后添加一个打印一个字符的代码段~\code{LABEL\_SEG\_CODECG}，接着将该段的段描述符~\code{LABEL\_DESC\_CODECG}~添加到~GDT~中，然后为该段准备一个段选择子~\code{SelectorCodeCG}，最后加入初始化该段描述符的代码：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=231, lastline=244]{../src/chapter3/3/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=27, lastline=29]{../src/chapter3/3/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=42, lastline=44]{../src/chapter3/3/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=117, lastline=125]{../src/chapter3/3/loader.S}
+\codecaption{添加调用门的目标段(节自 chapter3/3/loader.S)}\label{CHpm_codecg}
+
+用目标代码段~\code{LABEL\_SEG\_CODECG}~的信息初始化调用门的门描述符~\code{LABEL\_CG\_TEST}，以及门选择子~\code{SelectorCGTest}：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=29, lastline=33]{../src/chapter3/3/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=43, lastline=45]{../src/chapter3/3/loader.S}
+\codecaption{设置调用门描述符及选择子(节自 chapter3/3/loader.S)}\label{CHpm_cg_test}
+
+使用远调用~lcall~指令调用该调用门的门选择子~\code{SelectorCGTest}：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=218, lastline=223]{../src/chapter3/3/loader.S}
+\codecaption{调用门选择子(节自 chapter3/3/loader.S)}\label{CHpm_cg_call1}
+
+这样我们就完成了使用调用门进行简单控制权转移的代码，~\code{make, sudo make copy}~之后，用~VBox~虚拟机载入生成的镜像，运行结果如图~\ref{vb_run_8}~所示。由于我们仅仅是在加载~LDT~之前添加了一个门调用，而且门调用的目标段在屏幕的第~11~行第~0~列打印了一个~\code{'C'}~后就返回到了调用处，所以加载~LDT~的代码继续运行，就是图中所示结果。
 
 \FIG{使用调用门进行简单的控制权转移}{vb_run_8}{0.75\textwidth}
