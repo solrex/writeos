@@ -222,7 +222,6 @@ CODE32_2:
     mov     $(SelectorLDT), %ax
     lldt    %ax
     
-
     ljmp    $(SelectorLDTCodeA), $0
 
 /* Get the length of 32-bit segment code. */
@@ -242,3 +241,4 @@ LABEL_SEG_CODECG:
 
 /* Get the length of 32-bit call gate destination segment code. */
 .set    SegCodeCGLen, . - LABEL_SEG_CODECG
+
