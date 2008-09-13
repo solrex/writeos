@@ -412,6 +412,8 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 简单来说，调用门描述了由一个段选择子和一个偏移所指定的目标代码段中的一个地址，程序通过调用门将转移到这个地址。下面我们通过一个简单的例子来介绍一下调用门的基本使用方法。
 
+\noindent\textbf{［简单的调用门转移举例］}
+
 为了使用调用门，我们首先要给出一个目标段，然后用该目标段的信息初始化调用门的门描述符，最后用调用门的门选择子实现门调用。
 
 添加一个目标段我们已经做过很多次，非常简单。首先在上一节~loader.S~最后添加一个打印一个字符的代码段~\code{LABEL\_SEG\_CODECG}，接着将该段的段描述符~\code{LABEL\_DESC\_CODECG}~添加到~GDT~中，然后为该段准备一个段选择子~\code{SelectorCodeCG}，最后加入初始化该段描述符的代码：
@@ -424,7 +426,7 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 总的来看，~\code{LABEL\_SEG\_CODECG}~指向的这个段和我们以前为了打印程序运行结果所使用的段没有本质不同，为了简单起见，这里我们仅仅让它打印一个字符~\code{'C'}~就返回。
 
-用目标代码段~\code{LABEL\_SEG\_CODECG}~的信息初始化调用门的门描述符~\code{LABEL\_CG\_TEST}，以及门选择子~\code{SelectorCGTest}\。与汇编宏~\code{Descriptor}~类似，我们这里使用汇编宏~\code{Gate}~来初始化门描述符，宏~\code{Gate}~的定义可以在头文件~\code{pm.h}~中找到：
+用目标代码段~\code{LABEL\_SEG\_CODECG}~的信息初始化调用门的门描述符~\code{LABEL\_CG\_TEST}，以及门选择子~\code{SelectorCGTest}。与汇编宏~\code{Descriptor}~类似，我们这里使用汇编宏~\code{Gate}~来初始化门描述符，宏~\code{Gate}~的定义可以在头文件~\code{pm.h}~中找到：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=71, lastline=82]{../src/chapter3/3/pm.h}
 \codecaption{汇编宏~Gate~定义(节自 chapter3/3/pm.h)}\label{CHpm_cg_gate}
@@ -446,3 +448,33 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 \FIG{使用调用门进行简单的控制权转移}{vb_run_8}{0.75\textwidth}
 
+\noindent\textbf{［涉及特权级变化的调用门转移］}
+
+在上面例子中我们只是使用调用门取代了传统的直接跳转方式，并没有涉及到特权级的变化。显然调用门不是用来做这种自找麻烦的事情的，其设计的主要目的是实现从低特权级代码跳转到高特权级的非一致代码的功能。
+
+在使用调用门进行转移时，处理机会使用四个特权级值来检查控制权的转移是否合法：
+
+\begin{enumerate}
+\item CPL：当前特权级；
+\item RPL：调用门选择子的请求特权级；
+\item DPL：调用门描述符的描述符特权级；
+\item DPL：目标代码段的段描述符特权级。
+\end{enumerate}
+
+使用~CALL~或者~JMP~指令访问调用门进行控制权转移时，特权级检查的规则有所不同，如表~\ref{callgate_rules}~所示：
+
+\begin{center}\begin{longtable}{l|l}
+\caption[]{调用门特权级检查规则}\label{callgate_rules}\\
+\hline
+\textbf{指令} & \textbf{特权级检查规则}\\
+\hline
+CALL & CPL $\le$ 调用门~DPL; RPL $\le$ 调用门~DPL\\
+     & 目标段 DPL $\le$ CPL\\
+\hline
+JMP  & CPL $\le$ 调用门~DPL; RPL $\le$ 调用门~DPL\\
+     & 当目标段是一致代码段时：目标段~DPL $\le$ CPL\\
+     & 当目标段是非一致代码段时：目标段~DPL = CPL\\
+\hline
+\end{longtable}\end{center}
+
+这张表内容虽然不多，但也不容易很快理解。这里我们应该着重看目标段~DPL~和~CPL~的比较，这才是调用门特权级检验的特点所在。总的来说，使用调用门需要目标段的~DPL~小于或等于~CPL~，意思就是要转移的目标段特权级高于当前特权级。这与我们在本节开头看到的一般转移的特权级检查有非常明显的不同。除此之外剩下的检查就是对调用门访问的检查了，和访问一个数据段时特权级检查的规则是一样的，我们已经熟知了。
