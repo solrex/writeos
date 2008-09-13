@@ -190,13 +190,13 @@ CODE32_1:
     jmp     CODE32_1
 CODE32_2:
 
-    lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
-
-    pushl   $(SelectorStackR3)
+    pushl   $(SelectorStackR3)     /* Fake call procedure. */
     pushl   $(TopOfStackR3)
     pushl   $(SelectorCodeR3)
     pushl   $0
-    lret
+    lret                           /* return with no call */
+
+    lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
     mov     $(SelectorLDT), %ax
     lldt    %ax
@@ -228,7 +228,7 @@ LABEL_SEG_CODER3:
 
     movl    $((80 * 11 + 1) * 2), %edi  /* line 11, column 1 */
     movb    $0xC, %ah               /* 0000: Black Back 1100: Red Front */
-    movb    $'3', %al               /* Print a 'C' */
+    movb    $'3', %al               /* Print a '3' */
 
     mov     %ax, %gs:(%edi)
     jmp     .
