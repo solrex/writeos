@@ -69,14 +69,14 @@
 .endm
 
 /* Gate Descriptor data structure.
-   Usage: Gate Selector, Offset, DCount, Attr
+   Usage: Gate Selector, Offset, PCount, Attr
     Selector:  2byte
     Offset:    4byte
-    DCount:    byte
+    PCount:    byte
     Attr:      byte */
-.macro Gate  Selector, Offset, DCount, Attr
+.macro Gate  Selector, Offset, PCount, Attr
     .2byte     (\Offset & 0xFFFF)
     .2byte     \Selector
-    .2byte     (\DCount & 0x1F) | ((\Attr << 8) & 0xFF00)
+    .2byte     (\PCount & 0x1F) | ((\Attr << 8) & 0xFF00)
     .2byte     ((\Offset >> 16) & 0xFFFF)
 .endm

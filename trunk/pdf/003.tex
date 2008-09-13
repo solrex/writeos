@@ -408,7 +408,7 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 \FIG{调用门描述符}{callgate_desc}{.9\textwidth}
 
-门其实也是一种描述符，和段描述符类似。调用门描述符的数据结构如图~\ref{callgate_desc}~所示。其实看起来这个调用门描述符的数据结构要比段描述符简单一些，至少从它的属性来说，没有段描述符多。我们仍然只关注最重要的部分：首先是段选择子（Segment Selector），指定了通过这个调用门访问的代码段；其次是段偏移量（Offset in Segment），指定了要访问代码段中的某个入口偏移；描述符特权级（DPL），代表此门描述符的特权级；P，代表此调用门是否可用。
+门其实也是一种描述符，和段描述符类似。调用门描述符的数据结构如图~\ref{callgate_desc}~所示。其实看起来这个调用门描述符的数据结构要比段描述符简单一些，至少从它的属性来说，没有段描述符多。我们仍然只关注最重要的部分：首先是段选择子（Segment Selector），指定了通过这个调用门访问的代码段；其次是段偏移量（Offset in Segment），指定了要访问代码段中的某个入口偏移；描述符特权级（DPL），代表此门描述符的特权级；P，代表此调用门是否可用；参数计数（Param. Count）记录了如果发生栈切换的话，有多少个选项参数会在栈间拷贝。
 
 简单来说，调用门描述了由一个段选择子和一个偏移所指定的目标代码段中的一个地址，程序通过调用门将转移到这个地址。下面我们通过一个简单的例子来介绍一下调用门的基本使用方法。
 
@@ -422,17 +422,27 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=117, lastline=125]{../src/chapter3/3/loader.S}
 \codecaption{添加调用门的目标段(节自 chapter3/3/loader.S)}\label{CHpm_codecg}
 
-用目标代码段~\code{LABEL\_SEG\_CODECG}~的信息初始化调用门的门描述符~\code{LABEL\_CG\_TEST}，以及门选择子~\code{SelectorCGTest}：
+总的来看，~\code{LABEL\_SEG\_CODECG}~指向的这个段和我们以前为了打印程序运行结果所使用的段没有本质不同，为了简单起见，这里我们仅仅让它打印一个字符~\code{'C'}~就返回。
+
+用目标代码段~\code{LABEL\_SEG\_CODECG}~的信息初始化调用门的门描述符~\code{LABEL\_CG\_TEST}，以及门选择子~\code{SelectorCGTest}\。与汇编宏~\code{Descriptor}~类似，我们这里使用汇编宏~\code{Gate}~来初始化门描述符，宏~\code{Gate}~的定义可以在头文件~\code{pm.h}~中找到：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=71, lastline=82]{../src/chapter3/3/pm.h}
+\codecaption{汇编宏~Gate~定义(节自 chapter3/3/pm.h)}\label{CHpm_cg_gate}
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=29, lastline=33]{../src/chapter3/3/loader.S}
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=43, lastline=45]{../src/chapter3/3/loader.S}
 \codecaption{设置调用门描述符及选择子(节自 chapter3/3/loader.S)}\label{CHpm_cg_test}
+
+我们可以看到，宏~\code{Gate}~的四个参数分别为：段选择子、偏移量、参数计数和属性，它们在存储空间中的分布与图~\ref{callgate_desc}~中介绍相同。由于这个例子仅仅介绍调用门的简单使用，并不涉及特权级切换，所以也不发生栈切换，这里我们将参数计数设置为~0；门描述符的属性为~\code{(DA\_386CGate + DPL)}~，表明它是一个调用门（属性定义见图~\ref{CHpm_descm}），DPL~为~0~，与我们一直使用的特权级相同；目标代码段选择子是~\code{SelectorCodeCG}~，偏移是~0~，所以如果该调用门被调用，将转移到目标代码段的开头，即~\code{LABEL\_SEG\_CODECG}~处开始执行。
 
 使用远调用~lcall~指令调用该调用门的门选择子~\code{SelectorCGTest}：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=218, lastline=223]{../src/chapter3/3/loader.S}
 \codecaption{调用门选择子(节自 chapter3/3/loader.S)}\label{CHpm_cg_call1}
 
+由于对调用门的调用往往涉及到段间转移，所以我们通常使用~gas~的~lcall~远跳转指令和~lret~远返回指令进行调用和返回。
+
 这样我们就完成了使用调用门进行简单控制权转移的代码，~\code{make, sudo make copy}~之后，用~VBox~虚拟机载入生成的镜像，运行结果如图~\ref{vb_run_8}~所示。由于我们仅仅是在加载~LDT~之前添加了一个门调用，而且门调用的目标段在屏幕的第~11~行第~0~列打印了一个~\code{'C'}~后就返回到了调用处，所以加载~LDT~的代码继续运行，就是图中所示结果。
 
 \FIG{使用调用门进行简单的控制权转移}{vb_run_8}{0.75\textwidth}
+
