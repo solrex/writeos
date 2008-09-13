@@ -80,3 +80,21 @@
     .2byte     (\PCount & 0x1F) | ((\Attr << 8) & 0xFF00)
     .2byte     ((\Offset >> 16) & 0xFFFF)
 .endm
+
+/* Initialize descriptor.
+   Usage: InitDesc SegLabel, SegDesc
+    Base:  4byte 
+    Limit: 4byte (low 20 bits available)
+    Attr:  2byte (lower 4 bits of higher byte are always 0) */
+.macro InitDesc SegLabel, SegDesc
+    xor     %eax, %eax
+    mov     %cs, %ax
+    shl     $4, %eax
+    addl    $(\SegLabel), %eax
+    movw    %ax, (\SegDesc + 2)
+    shr     $16, %eax
+    movb    %al, (\SegDesc + 4)
+    movb    %ah, (\SegDesc + 7)
+.endm
+
+
