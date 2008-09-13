@@ -405,7 +405,7 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 总的来说，通过~JMP~和~CALL~实行的都是一般的转移，最多从低特权级转移到高特权级的一致代码段，CPL~总是不变的。
 
-\subsubsection{使用调用门转移}
+\subsection{使用调用门转移}
 
 调用门是~x86~体系结构下用来控制程序在不同特权级间转移的一种机制。它的目的是使低特权级的代码能够调用高特权级的代码，这一机制在使用了内存保护和特权级机制的现代操作系统中非常有用，因为它允许应用程序在操作系统控制下安全地调用内核例程或者系统接口。
 
@@ -415,7 +415,7 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 简单来说，调用门描述了由一个段选择子和一个偏移所指定的目标代码段中的一个地址，程序通过调用门将转移到这个地址。下面我们通过一个简单的例子来介绍一下调用门的基本使用方法。
 
-\noindent\textbf{［简单的调用门转移举例］}
+\subsubsection{简单的调用门转移举例}
 
 为了使用调用门，我们首先要给出一个目标段，然后用该目标段的信息初始化调用门的门描述符，最后用调用门的门选择子实现门调用。
 
@@ -451,7 +451,7 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 \FIG{使用调用门进行简单的控制权转移}{vb_run_8}{0.75\textwidth}
 
-\noindent\textbf{［涉及特权级变化的调用门转移］}
+\subsubsection{涉及特权级变化的调用门转移}
 
 在上面例子中我们只是使用调用门取代了传统的直接跳转方式，并没有涉及到特权级的变化。显然调用门不是用来做这种自找麻烦的事情的，其设计的主要目的是实现从低特权级代码跳转到高特权级的非一致代码的功能。
 
@@ -466,7 +466,7 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 使用~CALL~或者~JMP~指令访问调用门进行控制权转移时，特权级检查的规则有所不同，如表~\ref{callgate_rules}~所示：
 
-\begin{center}\begin{longtable}{l|l}
+\begin{center}\begin{longtable}{|l|l|}
 \caption[]{调用门特权级检查规则}\label{callgate_rules}\\
 \hline
 \textbf{指令} & \textbf{特权级检查规则}\\
@@ -480,10 +480,40 @@ JMP  & CPL $\le$ 调用门~DPL; RPL $\le$ 调用门~DPL\\
 \hline
 \end{longtable}\end{center}
 
-这张表内容虽然不多，但也不容易很快理解。这里我们应该着重看目标段~DPL~和~CPL~的比较，这才是调用门特权级检验的特点所在。总的来说，使用调用门需要目标段的~DPL~小于或等于~CPL~，意思就是要转移的目标段特权级高于当前特权级。这与我们在本节开头看到的一般转移的特权级检查有非常明显的不同。除此之外剩下的检查就是对调用门访问的检查了，和访问一个数据段时特权级检查的规则是一样的，我们已经熟知了。
+这张表内容虽然不多，但也不容易很快理解。这里我们应该着重看目标段~DPL~和~CPL~的比较，这才是调用门特权级检验的特点所在。总的来说，使用调用门需要目标段的~DPL~小于或等于~CPL~，意思就是要转移的目标段特权级高于当前特权级。这与我们在本节开头看到的一般转移的特权级检查有非常明显的不同。除此之外剩下的检查就是对调用门访问的检查了，这种特权级检查和访问一个数据段时进行的特权级检查的规则是一样的，我们已经熟知了。
 
 我们已经了解了涉及特权级变化的调用门转移时处理机进行的特权级检查规则，但为了写一段从低特权级转移到高特权级的测试代码，我们仍然需要处理一个问题：如何从高特权级转移到低特权级？因为我们之前的代码一直运行在~ring 0~特权级上，要实现从低到高的转移，首先要从高特权级转到低特权级。
 
-其实思想很简单，既然~CALL~指令能从低特权级转移到高特权级，自然而然地~RET~指令能从高特权级返回低特权级。我们只需要~hack~一下~RET~指令的使用方法即可。
+其实思想很简单，既然~CALL~指令能从低特权级转移到高特权级，自然而然地~RET~指令能从高特权级返回低特权级。我们只需要~hack~一下~RET~指令的使用方法即可（即用~RET~指令实现跳转到低特权级代码的功能）。
 
-一般~CALL~和~RET~指令都是配合使用的，先用~CALL~跳转到目标地址，目标代码执行完后再用~RET~返回到~CALL~的下一条指令。为了从~ring 0~跳转到~ring 3~，我们并不使用~CALL~而直接执行~RET。为了使~RET~执行时不出错，我们需要为~RET~准备好栈和寄存器，就像通常执行~CALL~指令后要进行的工作一样。
+一般~CALL~和~RET~指令都是配合使用的，先用~CALL~跳转到目标地址，目标代码执行完后再用~RET~返回到~CALL~的下一条指令。为了从~ring 0~跳转到~ring 3~，我们并不使用~CALL~而直接执行~RET。为了使~RET~执行返回时不出错，我们需要为~RET~准备好返回时环境，就像通常执行~CALL~指令后处理机进行的工作一样。
+
+那么执行~CALL~指令时处理机都进行了哪些工作呢？这是一个非常复杂的问题，我们将留待下个小节再详细介绍。但是在我们的例子里（即最简单的情况下），CALL~所做的就是将~SS, ESP, CS, EIP~这四个寄存器的值顺序压到栈里，这样在~RET~指令执行的时候，处理机从堆栈~pop~出~EIP, CS, ESP, SS~的值来恢复~CALL~指令执行后的处理机现场。所以为了使~RET~跳转到我们想要执行的代码段，我们只需要手动将~ring 3~目标代码段的对应的~SS, ESP, CS, EIP~值压到栈里即可。
+
+下面开始准备这个~demo，仍旧是在上一节代码的基础上进行添加。首先，我们准备一个~ring 3~目标代码段和新栈：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=224, lastline=238]{../src/chapter3/4/loader.S}
+\codecaption{要运行在~ring 3~下的代码段(节自 chapter3/4/loader.S)}\label{CHpm_coder3}
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=73, lastline=76]{../src/chapter3/4/loader.S}
+\codecaption{为~ring 3~代码段准备的新栈(节自 chapter3/4/loader.S)}\label{CHpm_stackr3}
+
+这个代码段的功能就是在第~11~行第~1~列打印一个~3~字。
+
+其次，添加新段的描述符和选择子，并添加初始化代码：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=29, lastline=31]{../src/chapter3/4/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=47, lastline=49]{../src/chapter3/4/loader.S}
+\codecaption{为~ring 3~代码段和堆栈段添加的描述符和选择子(节自 chapter3/4/loader.S)}\label{CHpm_coder3_desc}
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=105, lastline=109]{../src/chapter3/4/loader.S}
+\codecaption{初始化~ring 3~代码段和堆栈段描述符的代码(节自 chapter3/4/loader.S)}\label{CHpm_coder3_init}
+
+我们注意到，其实~ring 3~下的代码段和~ring 0~下的代码段的代码部分是没有任何区别的，区别在于它们的代码段描述符和选择子中所标明的特权级。我们将~ring 3~下的目标代码段和堆栈段的段描述符属性中加上~\code{DA\_DPL3}~，表明它们的段描述符特权级均为~3~；在它们的段选择子属性中加上~\code{SA\_RPL3}~，表明它们的段选择子请求特权级均为~3~。以上这两点限制了这个段只能在~ring 3~下运行。
+
+准备好了两个段，我们将这两个段的信息作为~SS, ESP, CS, EIP~的内容依次压栈，然后再执行~lret~长返回指令，就能跳转到~ring 3~下运行目标代码段了：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=191, lastline=199]{../src/chapter3/4/loader.S}
+\codecaption{hack RET~指令进行实际的跳转}\label{CHpm_coder3_init}
+
+这样，我们就完成了从高特权级代码（ring 0）跳转到低特权级代码（ring 3）的过程。像往常那样使用~make, sudo make copy~编译，用虚拟机加载镜像运行结果如图所示。
