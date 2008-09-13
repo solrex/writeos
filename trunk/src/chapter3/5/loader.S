@@ -1,4 +1,4 @@
-/* chapter3/4/loader.S
+/* chapter3/5/loader.S
 
    Author: Wenbo Yang <solrex@gmail.com> <http://solrex.cn>
 
@@ -29,8 +29,9 @@ LABEL_DESC_LDT:     Descriptor        0,       (LDTLen - 1), DA_LDT
 LABEL_DESC_CODECG:  Descriptor        0, (SegCodeCGLen - 1), (DA_C + DA_32)
 LABEL_DESC_CODER3:  Descriptor        0, (SegCodeR3Len - 1), (DA_C + DA_32 + DA_DPL3)
 LABEL_DESC_STACKR3: Descriptor        0,       TopOfStackR3, (DA_DRWA + DA_32 + DA_DPL3)
+LABEL_DESC_TSS:     Descriptor        0,       (TSSLen - 1), DA_386TSS
 /* Gate Descriptors */
-LABEL_CG_TEST:      Gate    SelectorCodeCG, 0, 0, (DA_386CGate + DA_DPL0)
+LABEL_CG_TEST:      Gate    SelectorCodeCG, 0, 0, (DA_386CGate + DA_DPL3)
 
 .set GdtLen, (. - LABEL_GDT)  /* GDT Length */
 
@@ -47,6 +48,7 @@ GdtPtr: .2byte  (GdtLen - 1)  /* GDT Limit */
 .set    SelectorCGTest, (LABEL_CG_TEST     - LABEL_GDT)
 .set    SelectorCodeR3, (LABEL_DESC_CODER3 - LABEL_GDT + SA_RPL3)
 .set    SelectorStackR3,(LABEL_DESC_STACKR3- LABEL_GDT + SA_RPL3)
+.set    SelectorTSS,    (LABEL_DESC_TSS - LABEL_GDT)
 
 /* LDT segment */
 LABEL_LDT:
@@ -74,6 +76,37 @@ LABEL_STACK:
 LABEL_STACKR3:
 .space  512, 0
 .set    TopOfStackR3, (. - LABEL_STACKR3)
+
+LABEL_TSS:
+    .4byte  0           /* Back */
+    .4byte  TopOfStack  /* ring 0 */
+    .4byte  SelectorStack
+    .4byte  0           /* ring 1 */
+    .4byte  0
+    .4byte  0           /* ring 2 */
+    .4byte  0
+    .4byte  0           /* CR3 */
+    .4byte  0           /* EIP */
+    .4byte  0           /* EFLAGS */
+    .4byte  0           /* EAX */
+    .4byte  0           /* ECX */
+    .4byte  0           /* EDX */
+    .4byte  0           /* EBX */
+    .4byte  0           /* ESP */
+    .4byte  0           /* EBP */
+    .4byte  0           /* ESI */
+    .4byte  0           /* EDI */
+    .4byte  0           /* ES */
+    .4byte  0           /* CS */
+    .4byte  0           /* SS */
+    .4byte  0           /* DS */
+    .4byte  0           /* FS */
+    .4byte  0           /* GS */
+    .4byte  0           /* LDT */
+    .2byte  0           /* Trap Flag */
+    .2byte  (. - LABEL_TSS + 2)     /* */
+    .byte   0xff        /* End Flag */
+.set    TSSLen, (. - LABEL_TSS)
 
 /* Program starts here. */
 LABEL_BEGIN:
@@ -107,6 +140,9 @@ LABEL_BEGIN:
 
     /* Initialize ring 3 dest code segment descriptor. */
     InitDesc LABEL_SEG_CODER3, LABEL_DESC_CODER3
+
+    /* Initialize TSS segment descriptor. */
+    InitDesc LABEL_TSS, LABEL_DESC_TSS
 
     /* Prepared for loading GDTR */
     xor     %eax, %eax
@@ -190,14 +226,16 @@ CODE32_1:
     jmp     CODE32_1
 CODE32_2:
 
+    mov     $(SelectorTSS), %ax
+    ltr     %ax
+
     pushl   $(SelectorStackR3)     /* Fake call procedure. */
     pushl   $(TopOfStackR3)
     pushl   $(SelectorCodeR3)
     pushl   $0
     lret                           /* return with no call */
 
-    lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
-
+CODE32_3:
     mov     $(SelectorLDT), %ax
     lldt    %ax
     
@@ -231,8 +269,9 @@ LABEL_SEG_CODER3:
     movb    $'3', %al               /* Print a '3' */
 
     mov     %ax, %gs:(%edi)
-    jmp     .
+    lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
+    jmp     .   
 
-/* Get the length of 32-bit ring 3 segment code. */
+/* Get the length f 32-bit ring 3 segment code. */
 .set    SegCodeR3Len, . - LABEL_SEG_CODER3
 
