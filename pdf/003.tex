@@ -492,7 +492,7 @@ JMP  & CPL $\le$ 调用门~DPL; RPL $\le$ 调用门~DPL\\
 
 下面开始准备这个~demo，仍旧是在上一节代码的基础上进行添加。首先，我们准备一个~ring 3~目标代码段和新栈：
 
-\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=224, lastline=238]{../src/chapter3/4/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=224, lastline=237]{../src/chapter3/4/loader.S}
 \codecaption{要运行在~ring 3~下的代码段(节自 chapter3/4/loader.S)}\label{CHpm_coder3}
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=73, lastline=76]{../src/chapter3/4/loader.S}
@@ -517,3 +517,21 @@ JMP  & CPL $\le$ 调用门~DPL; RPL $\le$ 调用门~DPL\\
 \codecaption{hack RET~指令进行实际的跳转}\label{CHpm_coder3_init}
 
 这样，我们就完成了从高特权级代码（ring 0）跳转到低特权级代码（ring 3）的过程。像往常那样使用~make, sudo make copy~编译，用虚拟机加载镜像运行结果如图所示。
+
+上面这个例子仅仅演示了如何从高特权级跳转到低特权级，而没有介绍如何转移回高特权级。理论上来讲，我们只需将图~\ref{CHpm_coder3}~中的最后一条~JMP~指令替换成一条~CALL~调用门的指令即可。但是我们会看到，带有特权级转换的调用门转移并不是那么容易实现的。
+
+下面我们来尝试一下直接访问调用门，首先将门描述符的~DPL~改为~3~以满足在~ring 3~代码段访问调用门的条件。
+
+\begin{Command}
+LABEL_CG_TEST:      Gate    SelectorCodeCG, 0, 0, (DA_386CGate + DA_DPL3)
+\end{Command}
+
+然后将图~\ref{CHpm_coder3}~中最后一条~JMP~指令替换成对调用门的~CALL~指令：
+
+\begin{Command}
+lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
+\end{Command}
+
+然后编译运行一下，看看能否得到我们想要的结果？答案是否定的，我们看不到屏幕上打印出~'C'~字（如图）。为什么呢？主要是因为在~CALL~调用门的时候发生了程序栈的切换，而这个栈切换发生在~CALL~指令切换的过程中，CALL~指令要访问特殊的结构来得到新的栈信息，不像~RET~指令仅仅读取我们设置好的栈。下面一节就是介绍在~CALL~调用门和~RET~的时候究竟发生了什么事？需要什么特殊结构的辅助才能实现带有特权级切换的调用门转移。
+
+\subsubsection{栈切换和~TSS}
