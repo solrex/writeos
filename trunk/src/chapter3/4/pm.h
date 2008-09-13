@@ -82,10 +82,7 @@
 .endm
 
 /* Initialize descriptor.
-   Usage: InitDesc SegLabel, SegDesc
-    Base:  4byte 
-    Limit: 4byte (low 20 bits available)
-    Attr:  2byte (lower 4 bits of higher byte are always 0) */
+   Usage: InitDesc SegLabel, SegDesc */
 .macro InitDesc SegLabel, SegDesc
     xor     %eax, %eax
     mov     %cs, %ax
@@ -96,5 +93,4 @@
     movb    %al, (\SegDesc + 4)
     movb    %ah, (\SegDesc + 7)
 .endm
-
 

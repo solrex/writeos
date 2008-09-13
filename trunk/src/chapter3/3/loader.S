@@ -75,56 +75,23 @@ LABEL_BEGIN:
     mov     $0x100, %sp
 
     /* Initialize 32-bits code segment descriptor. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_SEG_CODE32), %eax
-    movw    %ax, (LABEL_DESC_CODE32 + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_DESC_CODE32 + 4)
-    movb    %ah, (LABEL_DESC_CODE32 + 7)
+    InitDesc LABEL_SEG_CODE32, LABEL_DESC_CODE32
 
     /* Initialize data segment descriptor. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_DATA), %eax
-    movw    %ax, (LABEL_DESC_DATA + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_DESC_DATA + 4)
-    movb    %ah, (LABEL_DESC_DATA + 7)
+    InitDesc LABEL_DATA, LABEL_DESC_DATA
 
     /* Initialize stack segment descriptor. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_STACK), %eax
-    movw    %ax, (LABEL_DESC_STACK + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_DESC_STACK + 4)
-    movb    %ah, (LABEL_DESC_STACK + 7)
+    InitDesc LABEL_STACK, LABEL_DESC_STACK
 
     /* Initialize LDT descriptor in GDT. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_LDT), %eax
-    movw    %ax, (LABEL_DESC_LDT + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_DESC_LDT + 4)
-    movb    %ah, (LABEL_DESC_LDT + 7)
-
-    /* Initialize call gate dest code segment descriptor. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_SEG_CODECG), %eax
-    movw    %ax, (LABEL_DESC_CODECG + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_DESC_CODECG + 4)
-    movb    %ah, (LABEL_DESC_CODECG + 7)
+    InitDesc LABEL_LDT, LABEL_DESC_LDT
 
     /* Initialize code A descriptor in LDT. */
+    InitDesc LABEL_CODEA, LABEL_LDT_DESC_CODEA
+
+    /* Initialize call gate dest code segment descriptor. */
+    InitDesc LABEL_SEG_CODECG, LABEL_DESC_CODECG
+
     xor     %eax, %eax
     mov     %cs, %ax
     shl     $4, %eax
@@ -221,7 +188,7 @@ CODE32_2:
 
     mov     $(SelectorLDT), %ax
     lldt    %ax
-    
+
     ljmp    $(SelectorLDTCodeA), $0
 
 /* Get the length of 32-bit segment code. */
@@ -241,4 +208,3 @@ LABEL_SEG_CODECG:
 
 /* Get the length of 32-bit call gate destination segment code. */
 .set    SegCodeCGLen, . - LABEL_SEG_CODECG
-

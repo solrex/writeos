@@ -70,54 +70,19 @@ LABEL_BEGIN:
     mov     $0x100, %sp
 
     /* Initialize 32-bits code segment descriptor. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_SEG_CODE32), %eax
-    movw    %ax, (LABEL_DESC_CODE32 + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_DESC_CODE32 + 4)
-    movb    %ah, (LABEL_DESC_CODE32 + 7)
+    InitDesc LABEL_SEG_CODE32, LABEL_DESC_CODE32
 
     /* Initialize data segment descriptor. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_DATA), %eax
-    movw    %ax, (LABEL_DESC_DATA + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_DESC_DATA + 4)
-    movb    %ah, (LABEL_DESC_DATA + 7)
+    InitDesc LABEL_DATA, LABEL_DESC_DATA
 
     /* Initialize stack segment descriptor. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_STACK), %eax
-    movw    %ax, (LABEL_DESC_STACK + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_DESC_STACK + 4)
-    movb    %ah, (LABEL_DESC_STACK + 7)
+    InitDesc LABEL_STACK, LABEL_DESC_STACK
 
     /* Initialize LDT descriptor in GDT. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_LDT), %eax
-    movw    %ax, (LABEL_DESC_LDT + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_DESC_LDT + 4)
-    movb    %ah, (LABEL_DESC_LDT + 7)
+    InitDesc LABEL_LDT, LABEL_DESC_LDT
 
     /* Initialize code A descriptor in LDT. */
-    xor     %eax, %eax
-    mov     %cs, %ax
-    shl     $4, %eax
-    addl    $(LABEL_CODEA), %eax
-    movw    %ax, (LABEL_LDT_DESC_CODEA + 2)
-    shr     $16, %eax
-    movb    %al, (LABEL_LDT_DESC_CODEA + 4)
-    movb    %ah, (LABEL_LDT_DESC_CODEA + 7)
+    InitDesc LABEL_CODEA, LABEL_LDT_DESC_CODEA
 
     /* Prepared for loading GDTR */
     xor     %eax, %eax
@@ -145,7 +110,6 @@ LABEL_BEGIN:
     /* Mixed-Size Jump. */
     ljmpl $SelectorCode32, $0       /* Thanks to earthengine@gmail, I got */
                                     /* this mixed-size jump insn of gas.  */
-
 
 /* 32-bit code segment for LDT */
 LABEL_CODEA:
@@ -209,4 +173,3 @@ CODE32_2:
 
 /* Get the length of 32-bit segment code. */
 .set    SegCode32Len, . - LABEL_SEG_CODE32
-

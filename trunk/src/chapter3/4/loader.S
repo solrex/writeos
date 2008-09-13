@@ -96,17 +96,17 @@ LABEL_BEGIN:
     /* Initialize LDT descriptor in GDT. */
     InitDesc LABEL_LDT, LABEL_DESC_LDT
 
+    /* Initialize code A descriptor in LDT. */
+    InitDesc LABEL_CODEA, LABEL_LDT_DESC_CODEA
+
     /* Initialize call gate dest code segment descriptor. */
     InitDesc LABEL_SEG_CODECG, LABEL_DESC_CODECG
 
     /* Initialize ring 3 stack segment descriptor. */
     InitDesc LABEL_STACKR3, LABEL_DESC_STACKR3
 
-    /* Initialize call gate dest code segment descriptor. */
+    /* Initialize ring 3 dest code segment descriptor. */
     InitDesc LABEL_SEG_CODER3, LABEL_DESC_CODER3
-
-    /* Initialize code A descriptor in LDT. */
-    InitDesc LABEL_CODEA, LABEL_LDT_DESC_CODEA
 
     /* Prepared for loading GDTR */
     xor     %eax, %eax
