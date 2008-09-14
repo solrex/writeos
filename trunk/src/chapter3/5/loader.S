@@ -226,7 +226,7 @@ CODE32_1:
     jmp     CODE32_1
 CODE32_2:
 
-    mov     $(SelectorTSS), %ax
+    mov     $(SelectorTSS), %ax    /* Load TSS to TR register */
     ltr     %ax
 
     pushl   $(SelectorStackR3)     /* Fake call procedure. */

@@ -170,7 +170,7 @@ NASM~的手册中说~GAS~没有提供这条指令的实现，我就用~.byte~伪
 执行这条混合字长的跳转指令时，CPU~就会用段选择子~\code{SelectorCode32}~去寻找~GDT~中对应的段，由于段偏移是~0~，所以~CPU~将跳转到图~\ref{CHpm_demo1}~中~demo~程序的开头。为了方便阅读，整个~loader.S~的代码附在图~\ref{CHpm_loader1}~中：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=1, lastline=99]{../src/chapter3/1/loader.S}
-\codecaption{chapter3/1/loader.S (节自 chapter3/1/loader.S)}\label{CHpm_loader1}
+\codecaption{chapter3/1/loader.S}\label{CHpm_loader1}
 
 \subsection{生成镜像并测试}
 
@@ -405,7 +405,7 @@ JMP~和~CALL~指令可以实现以下~4~种形式的转移：
 
 总的来说，通过~JMP~和~CALL~实行的都是一般的转移，最多从低特权级转移到高特权级的一致代码段，CPL~总是不变的。
 
-\subsection{使用调用门转移}
+\subsection{使用调用门转移}\label{CHpm_callgate}
 
 调用门是~x86~体系结构下用来控制程序在不同特权级间转移的一种机制。它的目的是使低特权级的代码能够调用高特权级的代码，这一机制在使用了内存保护和特权级机制的现代操作系统中非常有用，因为它允许应用程序在操作系统控制下安全地调用内核例程或者系统接口。
 
@@ -503,7 +503,7 @@ JMP  & CPL $\le$ 调用门~DPL; RPL $\le$ 调用门~DPL\\
 其次，添加新段的描述符和选择子，并添加初始化代码：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=29, lastline=31]{../src/chapter3/4/loader.S}
-\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=47, lastline=49]{../src/chapter3/4/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=47, lastline=49]{../src/chapter3/4/loader.S}
 \codecaption{为~ring 3~代码段和堆栈段添加的描述符和选择子(节自 chapter3/4/loader.S)}\label{CHpm_coder3_desc}
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=105, lastline=109]{../src/chapter3/4/loader.S}
@@ -568,3 +568,39 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 其中的栈切换过程如图~\ref{callgate_stack}~所示。需要注意的是，调用门描述符中的~PCount~域仅有~5~位，就是说在栈切换过程中最多只能复制~31~个参数。如果需要传递更多参数，可以传递一个指向某个数据结构的指针，或者通过栈中保存的调用者栈信息来访问旧栈中的参数。
 
+既然跨特权级的调用那么麻烦，跨特权级的返回也不会很简单。在跨特权级的返回指令执行时，处理机的工作包含以下步骤：
+
+\begin{enumerate}
+\item 检查保存在栈上的~CS~寄存器中的~RPL~域看返回时是否需要切换特权级；
+\item 加载保存在栈上的~CS~和~EIP~寄存器信息（同时对段描述符和段选择子的特权级和类型进行检验）；
+\item 如果~RET~指令有参数计数操作数，增加~ESP~的值跳过栈上的参数部分，此时~ESP~将指向保存的调用者的~SS~和~ESP。RET~的参数计数操作数应与调用门中描述符中的~PCount~域相同;
+\item 加载~SS~和~ESP，切换到调用者堆栈，被调用者的~SS~和~ESP~将被丢弃（此时会进行堆栈段选择子、栈顶指针和堆栈段描述符的特权级和类型检验）；
+\item 如果~RET~指令有参数计数操作数，增加~ESP~的值跳过栈上（调用者栈）的参数部分；
+\item 检查~DS, ES, FS~和~GS~寄存器的内容，如果某个寄存器指向的段的~DPL~小于当前特权级~CPL（此规则不适用于一致代码段），该寄存器将加载一个空描述符。
+\end{enumerate}
+
+在返回时栈切换的操作可视为调用时栈操作的逆过程。
+
+至此，我们已经完整地描述了跨特权级的调用和返回过程，下面就来实现一段跨特权级调用的示例程序。
+
+在第~\ref{CHpm_callgate}~的最后，我们尝试直接访问调用门失败，主要原因是没有准备~TSS~段，因此我们只需要在其基础上准备好~TSS~段并将其段选择子加载到~TR~寄存器中即可。
+
+首先，准备好~TSS~段，及其段描述符和选择子，并加入初始化~TSS~段描述符的代码：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=80, lastline=109]{../src/chapter3/5/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=31, lastline=32]{../src/chapter3/5/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=50, lastline=51]{../src/chapter3/5/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=144, lastline=145]{../src/chapter3/5/loader.S}
+\codecaption{TSS~段内容及其描述符和选择子和初始化代码(节自 chapter3/5/loader.S)}\label{CHpm_tss_desc}
+
+进入~ring 3~之前将~TSS~段选择子加载到~TR~寄存器中，这样在~ring 3~中访问调用门就可以实现跳转了。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=227, lastline=232]{../src/chapter3/5/loader.S}
+\codecaption{加载~TSS~段选择子到~TR~寄存器(节自 chapter3/5/loader.S)}\label{CHpm_tss_load}
+
+将得到的代码编译成镜像，运行结果如图~\ref{}~所示。由于我们
+
+为方便阅读，本节最终的~loader.S~全部代码如图~\ref{CHpm_loader5}：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2]{../src/chapter3/5/loader.S}
+\codecaption{chapter3/5/loader.S}\label{CHpm_loader5}
