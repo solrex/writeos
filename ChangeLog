@@ -1,4 +1,21 @@
 
+2008.09.14 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/[4, 5]/pm.h,
+	* src/chapter3/[4, 5]/boot.S,
+	* src/chapter3/[4, 5]/loader.S,
+	* src/chapter3/[4, 5]/Makefile,
+	* src/chapter3/[4, 5]/solrex_x86_boot.ld,
+	* src/chapter3/[4, 5]/solrex_x86_dos.ld: Source for chapter 3.4.
+	* src/chapter3/[4, 5]/bochsrc.bxrc.
+	* pdf/images/tss.eps,
+	* pdf/images/callgate_stack.eps,
+	* pdf/images/vb_run_9.eps,
+	* pdf/images/vb_run_10.eps: Pictures for chapter 3.4.
+	* pdf/003.tex: Updated chapter 3.4.
+	* src/Makefile,
+	* Makefile: GP Makefile, for convenience.
+
 2008.09.07 Wenbo Yang <solrex@gmail.com>
 
 	* src/chapter3/3/pm.h,
