@@ -78,14 +78,14 @@ LABEL_STACKR3:
 .set    TopOfStackR3, (. - LABEL_STACKR3)
 
 LABEL_TSS:
-    .4byte  0           /* Back */
-    .4byte  TopOfStack  /* ring 0 */
-    .4byte  SelectorStack
-    .4byte  0           /* ring 1 */
-    .4byte  0
-    .4byte  0           /* ring 2 */
-    .4byte  0
-    .4byte  0           /* CR3 */
+    .4byte  0           /* Back Link */
+    .4byte  TopOfStack  /* ESP0 */
+    .4byte  SelectorStack /* SS0 */
+    .4byte  0           /* ESP1 */
+    .4byte  0           /* SS1 */
+    .4byte  0           /* ESP2 */
+    .4byte  0           /* SS2 */
+    .4byte  0           /* CR3(PDBR) */
     .4byte  0           /* EIP */
     .4byte  0           /* EFLAGS */
     .4byte  0           /* EAX */
@@ -102,10 +102,10 @@ LABEL_TSS:
     .4byte  0           /* DS */
     .4byte  0           /* FS */
     .4byte  0           /* GS */
-    .4byte  0           /* LDT */
-    .2byte  0           /* Trap Flag */
-    .2byte  (. - LABEL_TSS + 2)     /* */
-    .byte   0xff        /* End Flag */
+    .4byte  0           /* LDT Segment Selector */
+    .2byte  0           /* Trap Flag: 1-bit */
+    .2byte  (. - LABEL_TSS + 2)     /* I/O Map Base Address */
+    .byte   0xff        /* End */
 .set    TSSLen, (. - LABEL_TSS)
 
 /* Program starts here. */
