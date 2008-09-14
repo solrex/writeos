@@ -54,3 +54,6 @@ clean:
 
 distclean: clean
 	@rm -f boot.img
+
+release: clean
+	@mv boot.img solrex.img
