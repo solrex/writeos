@@ -598,9 +598,13 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=227, lastline=232]{../src/chapter3/5/loader.S}
 \codecaption{加载~TSS~段选择子到~TR~寄存器(节自 chapter3/5/loader.S)}\label{CHpm_tss_load}
 
-将得到的代码编译成镜像，运行结果如图~\ref{}~所示。由于我们
+将得到的代码编译成镜像，运行结果如图~\ref{vb_run_10}~所示。我们可以看到这次在图~\ref{vb_run_9}~的基础上多打印了一个~'C'~字然后陷入了死循环，说明了我们成功达到了调用门跨特权级转移的目的。这个示例程序实现了从~ring 3~代码段转移到~ring 0~代码段，然后再返回~ring 3~进入死循环。
+
+\FIG{跨特权级的调用门转移}{vb_run_10}{.75\textwidth}
 
 为方便阅读，本节最终的~loader.S~全部代码如图~\ref{CHpm_loader5}：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2]{../src/chapter3/5/loader.S}
 \codecaption{chapter3/5/loader.S}\label{CHpm_loader5}
+
+\section{页式存储}

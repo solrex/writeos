@@ -28,8 +28,13 @@ boot.elf: boot.o
 boot.o: boot.S
 	$(CC) -c boot.S 
 
+copy: boot.img
+
 clean: 
 	@rm -f boot.o boot.elf boot.bin
 
 distclean: clean
 	@rm -f boot.img
+
+release: clean
+	@mv boot.img solrex.img
