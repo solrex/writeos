@@ -324,9 +324,19 @@ LABEL_SEG_CODER3:
 .set    SegCodeR3Len, . - LABEL_SEG_CODER3
 
 SetupPaging:
+    xor     %edx, %edx
+    mov     (MemSize), %eax
+    mov     $0x400000, %ebx
+    div     %ebx
+    mov     %eax, %ecx
+    test    %edx, %edx
+    jz      SP.no_remainder
+    inc     %ecx
+SP.no_remainder:
+    push    %ecx
+
     mov     $(SelectorPageDir), %ax
     mov     %ax, %es
-    mov     $1024, %ecx
     xor     %edi, %edi
     xor     %eax, %eax
     mov     $(PageTblBase | PG_P | PG_USU | PG_RWW), %eax
@@ -337,7 +347,10 @@ SP_1:
 
     mov     $(SelectorPageTbl), %ax
     mov     %ax, %es
-    mov     $(1024*1024), %ecx
+    pop     %eax
+    mov     $1024, %ebx
+    mul     %ebx
+    mov     %eax, %ecx
     xor     %edi, %edi
     mov     $(PG_P | PG_USU | PG_RWW), %eax
 SP_2:
