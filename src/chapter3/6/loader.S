@@ -10,8 +10,8 @@
 
 #include "pm.h"
 
-.set    PageDirBase, 0x200000   /* 2MB */
-.set    PageTblBase, 0x201000   /* 2MB+4KB */
+.set    PageDirBase, 0x200000   /* 2MB, base address of page directory */
+.set    PageTblBase, 0x201000   /* 2MB+4KB, base address of page table  */
 
 .code16
 .text
@@ -192,14 +192,14 @@ LABEL_CODEA:
     cld                         /* Clear DF flag. */
 
 /* Display a string from %esi(string offset) to %edi(video segment). */
-CODEA_1:
+CODEA.1:
     lodsb                       /* Load a byte from source */
     test    %al, %al
-    jz      CODEA_2
+    jz      CODEA.2
     mov     %ax, %gs:(%edi)
     add     $2, %edi
-    jmp     CODEA_1
-CODEA_2:
+    jmp     CODEA.1
+CODEA.2:
 
     /* Stop here, infinate loop. */
     jmp     .
@@ -207,7 +207,7 @@ CODEA_2:
 
 /* 32-bit code segment for GDT */
 LABEL_SEG_CODE32: 
-    call    SetupPaging      
+    call    SetupPaging     /* set up paging before 32-bit code */
 
     mov     $(SelectorData), %ax
     mov     %ax, %ds                /* Data segment selector */
@@ -226,14 +226,14 @@ LABEL_SEG_CODE32:
     cld                         /* Clear DF flag. */
 
 /* Display a string from %esi(string offset) to %edi(video segment). */
-CODE32_1:
+CODE32.1:
     lodsb                       /* Load a byte from source */
     test    %al, %al
-    jz      CODE32_2
+    jz      CODE32.2
     mov     %ax, %gs:(%edi)
     add     $2, %edi
-    jmp     CODE32_1
-CODE32_2:
+    jmp     CODE32.1
+CODE32.2:
 
     mov     $(SelectorTSS), %ax    /* Load TSS to TR register */
     ltr     %ax
@@ -244,7 +244,7 @@ CODE32_2:
     pushl   $0
     lret                           /* return with no call */
 
-CODE32_3:
+CODE32.3:
     mov     $(SelectorLDT), %ax
     lldt    %ax
     
@@ -285,33 +285,35 @@ LABEL_SEG_CODER3:
 .set    SegCodeR3Len, . - LABEL_SEG_CODER3
 
 SetupPaging:
-    mov     $(SelectorPageDir), %ax
+/* Directly map linear addresses to physical addresses for simplification */
+    /* Init page table directories, %ecx entries. */
+    mov     $(SelectorPageDir), %ax     
     mov     %ax, %es
-    mov     $1024, %ecx
+    mov     $1024, %ecx     /* Loop counter, num of page tables: 1024 */
     xor     %edi, %edi
     xor     %eax, %eax
+    /* */
     mov     $(PageTblBase | PG_P | PG_USU | PG_RWW), %eax
-SP_1:
-    stosl
-    add     $4096, %eax
-    loop    SP_1
+SP.1:
+    stosl                   /* Store %eax to %es:%edi consecutively. */
+    add     $4096, %eax     /* Page tables are in sequential format. */
+    loop    SP.1            /* %ecx loops. */
 
+    /* Init page tables, %ecx pages. */
     mov     $(SelectorPageTbl), %ax
     mov     %ax, %es
-    mov     $(1024*1024), %ecx
+    mov     $(1024*1024), %ecx  /* Loop counter, num of pages: 1024^2. */
     xor     %edi, %edi
+    /* */
     mov     $(PG_P | PG_USU | PG_RWW), %eax
-SP_2:
-    stosl
-    add     $4096, %eax
-    loop    SP_2
+SP.2:
+    stosl                   /* Store %eax to %es:%edi consecutively. */
+    add     $4096, %eax     /* Pages are in sequential format. */
+    loop    SP.2
 
     mov     $(PageDirBase), %eax
-    mov     %eax, %cr3
+    mov     %eax, %cr3  /* Store base address of page table dir to %cr3. */
     mov     %cr0, %eax
     or      $0x80000000, %eax
-    mov     %eax, %cr0
-    jmp     SP_3
-SP_3:
-    nop
+    mov     %eax, %cr0  /* Enable paging bit in %cr0. */
     ret

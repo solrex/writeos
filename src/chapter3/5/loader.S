@@ -185,14 +185,14 @@ LABEL_CODEA:
     cld                         /* Clear DF flag. */
 
 /* Display a string from %esi(string offset) to %edi(video segment). */
-CODEA_1:
+CODEA.1:
     lodsb                       /* Load a byte from source */
     test    %al, %al
-    jz      CODEA_2
+    jz      CODEA.2
     mov     %ax, %gs:(%edi)
     add     $2, %edi
-    jmp     CODEA_1
-CODEA_2:
+    jmp     CODEA.1
+CODEA.2:
 
     /* Stop here, infinate loop. */
     jmp     .
@@ -217,14 +217,14 @@ LABEL_SEG_CODE32:
     cld                         /* Clear DF flag. */
 
 /* Display a string from %esi(string offset) to %edi(video segment). */
-CODE32_1:
+CODE32.1:
     lodsb                       /* Load a byte from source */
     test    %al, %al
-    jz      CODE32_2
+    jz      CODE32.2
     mov     %ax, %gs:(%edi)
     add     $2, %edi
-    jmp     CODE32_1
-CODE32_2:
+    jmp     CODE32.1
+CODE32.2:
 
     mov     $(SelectorTSS), %ax    /* Load TSS to TR register */
     ltr     %ax
@@ -235,7 +235,7 @@ CODE32_2:
     pushl   $0
     lret                           /* return with no call */
 
-CODE32_3:
+CODE32.3:
     mov     $(SelectorLDT), %ax
     lldt    %ax
     
