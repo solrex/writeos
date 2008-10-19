@@ -309,7 +309,7 @@ SP.1:
 SP.2:
     stosl                   /* Store %eax to %es:%edi consecutively. */
     add     $4096, %eax     /* Pages are in sequential format. */
-    loop    SP.2
+    loop    SP.2            /* %ecx loops. */
 
     mov     $(PageDirBase), %eax
     mov     %eax, %cr3  /* Store base address of page table dir to %cr3. */
