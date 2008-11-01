@@ -619,13 +619,13 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 回忆图~\ref{protected_seg}~，我们已经知道了在保护模式下处理机将逻辑地址转换为线性地址的过程，下面我们以~4KB~大小的页面为例，来看处理机是如何将线性地址转换为最终的物理地址的。
 
-\FIG{线性地址转换（4KB 页）}{paging}{.8\textwidth}
+\FIG{线性地址转换（4KB~页）}{paging}{.8\textwidth}
 
 在图~\ref{paging}~里：
 \begin{itemize}
 \item CR3：是储存页目录基址的寄存器（Page Directory Base Register）。我们将设置好的页目录基址存放到~CR3~中，处理机在转换线性地址的时候就会去~CR3~中寻找页目录。
-\item Directory：线性地址的第~22~到~31~位存放的是该线性地址所在页的页表记录在页目录中的偏移量，处理机通过该偏移量得到该页表项，进而得到该页表的地址。
-\item Table：线性地址的第~12~到~21~位存放的是该线性地址所在页记录在页表中的偏移量，处理机通过该偏移量得到该页，进而得到该页地址。
+\item Directory：线性地址的第~22~到~31~位存放的是该线性地址所在页的页表记录在页目录中的偏移量，处理机通过该偏移量得到页目录项，进而得到该页表的地址。
+\item Table：线性地址的第~12~到~21~位存放的是该线性地址所在页记录在页表中的偏移量，处理机通过该偏移量得到页表项，进而得到该页地址。
 \item Offset：线性地址的第~0~到~11~位存放的是该线性地址在所属页表中的偏移量，处理机通过该偏移量得到该线性地址对应的物理地址。
 \end{itemize}
 
@@ -633,3 +633,19 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 \FIG{邮件地址转换}{paging_ex}{.8\textwidth}
 
+\subsection{启动分页机制}
+
+既然已经知道~Intel IA-32~的分页机制，那么我们就可以尝试启动它了。但是在启动分页机制之前，仍然有一个问题需要回答：页目录项（PDE, Page Directory Entry）、页表项（PTE, Page Table Entry）和CR3~的数据结构是什么？因为只有将页目录、页表和~CR3~设置正确，我们才能正确地启动和使用分页机制，所以必须知道它们的数据结构。
+
+\FIG{PDE~和~PTE~的数据结构（4KB~页）}{pde_pte}{.8\textwidth}
+
+图~\ref{pde_pte}~所示即为当页大小为~4KB~时，页目录项和页表项的数据结构。由于这里选项众多，对各位所代表的含义我们就不全部一一解释了，如果您想了解更多内容，请阅读~\href{http://download.intel.com/design/processor/manuals/253668.pdf}{Intel\textregistered~64 and IA-32 Architectures Software Developer's Manual, Volume 3A: System Programming Guide}~第~3~章第~7~节的有关内容。下面我们仅选择几个重要的位解释一下：
+
+\begin{itemize}
+\item Page(-Table) base address：均为~20~位，指向页（表）的物理地址。由于这里只有~20~位，所以要求页（表）的物理地址要以~4KB~为边界对齐（即低~12~位为~0）。因为每个页表占用~4KB~空间。每个页表项占用~4~个字节，所以每个页表包含~1024~个页表项（1024*4=4KB）。
+\item Present(P) flag：设置为~1~代表该页表项指向的页（或者该页表项指向的页表）存在于物理内存中，反之则不存在于物理内存中。处理机如果访问到该位为~0~的页表项或者页目录项，就会产生~\texttt{\#}PF~异常。该位的值由操作系统设置，处理机不会修改该位。
+\item Read/Write(RW) flag：设置为~0~表示该页表项指向的页（或者该页目录项指向的页表中的页）为只读，反之代表可读写。另外此位还与~U/S~位和~CR0~中的~WP~位相互作用，若~WP~为~0~，则即使~RW~为~0~，系统级程序仍然具有写权限。
+\item User/Supervisor(U/S) flag：设置为~0~代表该页表项指向的页（或者该页目录项指向的页表中的页）的特权级为系统级（CPL=0, 1, 2），反之则为用户级（CPL=3）。
+\end{itemize}
+
+与~PDE~和~PTE~类似，CR3~也是取页目录物理地址的高~20~位作为页目录的地址，所以同样要求页目录以~4KB~为边界对齐，每个页目录也包含~1024~个页目录项。CR3~的低~12~位中，第~3, 4~位分别作为~PCD~和~PWD~标志，与图~\ref{pde_pte}~中的~PCD~和~PWD~标志作用类似，不再赘述。
