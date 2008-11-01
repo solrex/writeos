@@ -1,4 +1,22 @@
 
+2008.11.0x Wenbo Yang <solrex@gmail.com>
+
+	* pdf/images/paging_ex.eps,
+	* pdf/pde_pte.eps:
+
+2008.10.19 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/[6, 7]/pm.h,
+	* src/chapter3/[6, 7]/boot.S,
+	* src/chapter3/[6, 7]/loader.S,
+	* src/chapter3/[6, 7]/Makefile,
+	* src/chapter3/[6, 7]/solrex_x86_boot.ld,
+	* src/chapter3/[6, 7]/solrex_x86_dos.ld,
+	* src/chapter3/7/lib.h: Source for chapter 3.5.
+	* src/chapter3/[6, 7]/bochsrc.bxrc.
+	* pdf/images/paging.eps,
+	* pdf/images/vb_run_11.eps: Pictures for chapter 3.5.
+
 2008.09.14 Wenbo Yang <solrex@gmail.com>
 
 	* src/chapter3/[4, 5]/pm.h,
