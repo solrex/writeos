@@ -615,7 +615,7 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 \subsection{分页机制}
 
-当~Intel IA-32~处理机启用分页机制后，程序的线性地址空间被分割成为固定大小的页。在运行时，这些页被映射到计算机的物理内存或者硬盘中。当应用程序访问某逻辑地址时，处理机首先将逻辑地址转换为线性地址，再使用分页机制将线性地址转换为实际的物理地址。如果被访问的包含该线性地址的页面当前不在物理内存中时，处理机会产生一个页错误异常（~\texttt{\#}PF, Page-Fault Exception）。此时操作系统的异常处理程序应该将该页面调入物理内存中。
+当~IA-32~处理机启用分页机制后，程序的线性地址空间被分割成为固定大小的页。在运行时，这些页被映射到计算机的物理内存或者硬盘中。当应用程序访问某逻辑地址时，处理机首先将逻辑地址转换为线性地址，再使用分页机制将线性地址转换为实际的物理地址。如果被访问的包含该线性地址的页面当前不在物理内存中时，处理机会产生一个页错误异常（~\texttt{\#}PF, Page-Fault Exception）。此时操作系统的异常处理程序应该将该页面调入物理内存中。
 
 回忆图~\ref{protected_seg}~，我们已经知道了在保护模式下处理机将逻辑地址转换为线性地址的过程，下面我们以~4KB~大小的页面为例，来看处理机是如何将线性地址转换为最终的物理地址的。
 
@@ -635,7 +635,7 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 \subsection{启动分页机制}
 
-既然已经知道~Intel IA-32~的分页机制，那么我们就可以尝试启动它了。但是在启动分页机制之前，仍然有一个问题需要回答：页目录项（PDE, Page Directory Entry）、页表项（PTE, Page Table Entry）和CR3~的数据结构是什么？因为只有将页目录、页表和~CR3~设置正确，我们才能正确地启动和使用分页机制，所以必须知道它们的数据结构。
+既然已经知道~IA-32~的分页机制，那么我们就可以尝试启动它了。但是在启动分页机制之前，仍然有一个问题需要回答：页目录项（PDE, Page Directory Entry）、页表项（PTE, Page Table Entry）和页目录指针（CR3）的数据结构是什么？因为只有将页目录、页表和~CR3~设置正确，我们才能正确地启动和使用分页机制，所以必须知道它们的数据结构。
 
 \FIG{PDE~和~PTE~的数据结构（4KB~页）}{pde_pte}{.8\textwidth}
 
@@ -648,4 +648,37 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 \item User/Supervisor(U/S) flag：设置为~0~代表该页表项指向的页（或者该页目录项指向的页表中的页）的特权级为系统级（CPL=0, 1, 2），反之则为用户级（CPL=3）。
 \end{itemize}
 
-与~PDE~和~PTE~类似，CR3~也是取页目录物理地址的高~20~位作为页目录的地址，所以同样要求页目录以~4KB~为边界对齐，每个页目录也包含~1024~个页目录项。CR3~的低~12~位中，第~3, 4~位分别作为~PCD~和~PWD~标志，与图~\ref{pde_pte}~中的~PCD~和~PWD~标志作用类似，不再赘述。
+与~PDE~和~PTE~类似，CR3~也是取页目录物理地址的高~20~位作为页目录的地址，所以同样要求页目录以~4KB~为边界对齐，因此每个页目录也包含~1024~个页目录项。CR3~的低~12~位中，第~3, 4~位分别作为~PCD~和~PWD~标志，与图~\ref{pde_pte}~中的~PCD~和~PWD~标志作用类似，不再赘述。
+
+了解了页目录项、页表项和~CR3~的数据结构之后，我们就可以写一个实验性的代码来开启分页机制了。在上一节代码的基础上，首先我们来添加两个段，基址分别为~\code{PageDirBase}~和~\code{PageTblBase}~，用来保存页目录和页表。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=13, lastline=14]{../src/chapter3/6/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=35, lastline=37]{../src/chapter3/6/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=56, lastline=58]{../src/chapter3/6/loader.S}
+\codecaption{添加保存页目录和页表的段(节自 chapter3/6/loader.S)}
+
+由于这两个段的基地址是我们直接写入的~magic number~，不用编译时候计算，所以这里就不需要再初始化两个段的描述符了。页目录有~1024~个目录项，故占用~4KB~内存。
+
+上文遇到的属性值~\code{DA\_LIMIT\_4K}~和将要遇到的~\code{PG\_P}~等属性被定义在~pm.h~中：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=23, lastline=24]{../src/chapter3/6/pm.h}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=57, lastline=62]{../src/chapter3/6/pm.h}
+\codecaption{为分页机制添加的新属性(节自 chapter3/6/pm.h)}
+
+然后添加一个函数，根据上面介绍的数据结构初始化页目录和所有页表，然后打开分页机制。由于我们只是尝试打开分页机制，为了简单起见，这个函数仅仅是将所有线性地址映射到与其相同的物理地址上，所以我们将有~1024~个页表，~1024*1024~个页。页表项所占空间将为：~1024*1024*4 = 4MB。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=287, lastline=319]{../src/chapter3/6/loader.S}
+\codecaption{初始化页目录和页表，并打开分页机制的函数(节自 chapter3/6/loader.S)}
+
+在这个函数中，首先我们初始化页目录，共有~1024~个页目录项，分别对应着~1024~个页表。由于已知第一个页表的基址为~\code{PageTblBase}~，故我们只需每次增加一个页表的大小（1024*4 = 4096）就得到下一个页表的基址，把这些基址赋给每个页目录项，循环~1024~次就能建立所有页目录项。在建立页目录项的时候需要加上属性（flags），由于我们每次增加的大小为~4096（后~12~位都是~0），所以在~\code{PageTblBase}~或上属性~\code{PG\_P | PG\_USU | PG\_RWW}~后，加上~4096~并不影响这些属性，后面的页目录项也自动获得了这些属性：存在内存中、用户级别和可读写。
+
+我们用同样的方法初始化所有页表。由于页表是连续存储的，我们可以转变初始化~1024~个页表为建立~1024*1024~个连续的页表项，由于我们将所有线性地址映射到与其相同的物理地址，所以第一个页的基址为~0，而每个页的大小为~4KB~，故增加~4096~就得到下个页的基址，以此类推，我们就可以建立起~$1024^2$~个页表项，对应于~$10242$~个页。每个页表项的属性（flag）为：存在内存中、用户级别和可读写。
+
+其实这里我们是犯了一个大错误的，~$1024^2$~个页的大小共为~4GB，而我们为虚拟机分配的内存仅仅有~32MB，这些页不可能同时存在于内存中，所以我们不应该将所有页目录项和页表项的~P~标志设置为~1。不过这仅仅是为了简单起见而写的一个示例代码，而且我们的~loader~并没有访问高地址的内存，所以也不会出现什么严重的后果。
+
+在初始化页目录和页表之后，我们就将页目录基址~\code{PageDirBase}~赋给~CR3~（这里我们先忽略了~CR3~的~PCD~和~PWD~标志位）；然后将~CR0~的最高位设置为~1~，就开启了~IA-32~处理机的分页机制。
+
+最后，在进入保护模式后，马上调用上面的函数打开分页机制。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=209, lastline=210]{../src/chapter3/6/loader.S}
+\codecaption{进入保护模式后马上打开分页机制(节自 chapter3/6/loader.S)}

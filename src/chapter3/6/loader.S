@@ -286,13 +286,13 @@ LABEL_SEG_CODER3:
 
 SetupPaging:
 /* Directly map linear addresses to physical addresses for simplification */
-    /* Init page table directories, %ecx entries. */
-    mov     $(SelectorPageDir), %ax     
+    /* Init page directory, %ecx entries. */
+    mov     $(SelectorPageDir), %ax
     mov     %ax, %es
     mov     $1024, %ecx     /* Loop counter, num of page tables: 1024 */
     xor     %edi, %edi
     xor     %eax, %eax
-    /* */
+    /* Set PDE attributes(flags): P: 1, U/S: 1, R/W: 1. */
     mov     $(PageTblBase | PG_P | PG_USU | PG_RWW), %eax
 SP.1:
     stosl                   /* Store %eax to %es:%edi consecutively. */
@@ -304,7 +304,7 @@ SP.1:
     mov     %ax, %es
     mov     $(1024*1024), %ecx  /* Loop counter, num of pages: 1024^2. */
     xor     %edi, %edi
-    /* */
+    /* Set PTE attributes(flags): P:1, U/S: 1， R/W: 1. */
     mov     $(PG_P | PG_USU | PG_RWW), %eax
 SP.2:
     stosl                   /* Store %eax to %es:%edi consecutively. */
