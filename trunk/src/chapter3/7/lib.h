@@ -12,14 +12,11 @@ DispAL:
     push   %ecx
     push   %edx
     push   %edi
-
-    mov    (DispPos), %edi
-    
+    mov    (CursorPos), %edi
     mov    $0xf, %ah
     mov    %al, %dl
     shrb   $4, %al
     mov    $2, %ecx
-
 DispAL.begin:
     and    $0xf, %al
     cmp    $9, %al
@@ -32,55 +29,46 @@ DispAL.1:
 DispAL.2:
     mov    %ax, %gs:(%edi)
     add    $2, %edi
-
     mov    %dl, %al
     loop   DispAL.begin
-
-    mov    %edi, (DispPos)
-
+    mov    %edi, (CursorPos)
     pop    %edi
     pop    %edx
     pop    %ecx
     ret
 
-DispInt: 
+DispInt:
     movl    4(%esp), %eax
     shr     $24, %eax
     call    DispAL
-
     movl    4(%esp), %eax
     shr     $16, %eax
     call    DispAL
-
     movl    4(%esp), %eax
     shr     $8, %eax
     call    DispAL
-
     movl    4(%esp), %eax
     call    DispAL
-
     movb    $0x7, %ah
     movb    $'h', %al
     pushl   %edi
-    movl    (DispPos), %edi
+    movl    (CursorPos), %edi
     movw    %ax, %gs:(%edi)
     addl    $4, %edi
-    movl    %edi, (DispPos)
+    movl    %edi, (CursorPos)
     popl    %edi
-
     ret
 
-DispStr: 
+DispStr:
     pushl   %ebp
     movl    %esp, %ebp
     pushl   %ebx
     pushl   %esi
     pushl   %edi
-
-    movl    8(%ebp), %esi   # pszInfo
-    movl    (DispPos), %edi
+    movl    8(%ebp), %esi
+    movl    (CursorPos), %edi
     movb    $0xF, %ah
-DispStr.1: 
+DispStr.1:
     lodsb
     testb   %al, %al
     jz      DispStr.2
@@ -97,23 +85,20 @@ DispStr.1:
     movl    %eax, %edi
     popl    %eax
     jmp     DispStr.1
-DispStr.3: 
+DispStr.3:
     movw    %ax, %gs:(%edi)
     addl    $2, %edi
     jmp     DispStr.1
-
-DispStr.2: 
-    movl    %edi, (DispPos)
-
+DispStr.2:
+    movl    %edi, (CursorPos)
     popl    %edi
     popl    %esi
     popl    %ebx
     popl    %ebp
     ret
 
-DispReturn: 
-    pushl  $(ReturnMes)
+DispLF:
+    pushl  $(LFMes)
     call    DispStr
     addl    $4, %esp
-
     ret

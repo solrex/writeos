@@ -1,8 +1,9 @@
 
-2008.11.0x Wenbo Yang <solrex@gmail.com>
+2008.11.02 Wenbo Yang <solrex@gmail.com>
 
 	* pdf/images/paging_ex.eps,
-	* pdf/pde_pte.eps:
+	* pdf/images/pde_pte.eps: Pictures for chapter 3.5.
+	* pdf/003.tex: Updated to chapter 3.5.
 
 2008.10.19 Wenbo Yang <solrex@gmail.com>
 

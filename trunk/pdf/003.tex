@@ -637,7 +637,11 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 既然已经知道~IA-32~的分页机制，那么我们就可以尝试启动它了。但是在启动分页机制之前，仍然有一个问题需要回答：页目录项（PDE, Page Directory Entry）、页表项（PTE, Page Table Entry）和页目录指针（CR3）的数据结构是什么？因为只有将页目录、页表和~CR3~设置正确，我们才能正确地启动和使用分页机制，所以必须知道它们的数据结构。
 
-图~\ref{pde_pte}~所示即为当页大小为~4KB~时，页目录项和页表项的数据结构。由于这里选项众多，对各位所代表的含义我们就不全部一一解释了，如果您想了解更多内容，请阅读~\href{http://download.intel.com/design/processor/manuals/253668.pdf}{Intel\textregistered~64 and IA-32 Architectures Software Developer's Manual, Volume 3A: System Programming Guide}~第~3~章第~7~节的有关内容。下面我们仅选择几个重要的位解释一下：
+\subsubsection{PDE~和~PTE}
+
+图~\ref{pde_pte}~所示即为当页大小为~4KB~时，页目录项和页表项的数据结构。由于这里选项众多，下面我们仅解释一下几个重要的位的用途，对其它位所代表的含义我们就不全部一一解释了。如果您想了解更多内容，请阅读~\href{http://download.intel.com/design/processor/manuals/253668.pdf}{Intel\textregistered~64 and IA-32 Architectures Software Developer's Manual, Volume 3A: System Programming Guide}~第~3~章第~7~节的有关内容。
+
+\FIG{PDE~和~PTE~的数据结构（4KB~页）}{pde_pte}{.8\textwidth}
 
 \begin{itemize}
 \item Page(-Table) base address：均为~20~位，指向页（表）的物理地址。由于这里只有~20~位，所以要求页（表）的物理地址要以~4KB~为边界对齐（即低~12~位为~0）。因为每个页表占用~4KB~空间。每个页表项占用~4~个字节，所以每个页表包含~1024~个页表项（1024*4=4KB）。
@@ -646,9 +650,9 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 \item User/Supervisor(U/S) flag：设置为~0~代表该页表项指向的页（或者该页目录项指向的页表中的页）的特权级为系统级（CPL=0, 1, 2），反之则为用户级（CPL=3）。
 \end{itemize}
 
-\FIG{PDE~和~PTE~的数据结构（4KB~页）}{pde_pte}{.8\textwidth}
-
 与~PDE~和~PTE~类似，CR3~也是取页目录物理地址的高~20~位作为页目录的地址，所以同样要求页目录以~4KB~为边界对齐，因此每个页目录也包含~1024~个页目录项。CR3~的低~12~位中，第~3, 4~位分别作为~PCD~和~PWD~标志，与图~\ref{pde_pte}~中的~PCD~和~PWD~标志作用类似，不再赘述。
+
+\subsubsection{开启分页机制示例代码}
 
 了解了页目录项、页表项和~CR3~的数据结构之后，我们就可以写一个实验性的代码来开启分页机制了。在上一节代码的基础上，首先我们来添加两个段，基址分别为~\code{PageDirBase}~和~\code{PageTblBase}~，用来保存页目录和页表。
 
@@ -687,4 +691,117 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 \subsection{修正内存映射的错误}
 
-我们前面提到我们犯了一个大错误，将线性地址映射到了不存在的物理地址上。那么
+我们前面提到我们犯了一个大错误，将线性地址映射到了不存在的物理地址上。那么一个相对简单的解决办法是避免映射不存在的物理地址，也就是说我们不需要将页目录和页表中的条目全部用完。这样还有另外一个好处就是减小了页表所占用的空间，在上一节的例子中，~$1024^2$~个页表共占用了~4MB~的空间，而我们给虚拟机总共才分配了~32MB~的内存，这显然是极大的浪费。
+
+为了避免映射不存在的物理地址，我们就需要知道机器的内存有多大。通常情况下我们使用功能码为~E820h~的~15h~中断来做这件事情。
+
+\subsubsection{INT 15h, EAX=E820h~-~查询内存分布图}
+
+功能码为~E820h~的~15h~中断调用只能在实模式下使用，这个调用会返回所有安装在主机上的~RAM,以及被~BIOS~所保留的物理内存范围的内存分布。每次成功地调用这个接口都会返回一行物理地址信息，其中包括一块物理地址的范围以及这段地址的类型（可否被操作系使用等）。
+
+INT 15h, AX=E820h~和~INT 15h AH=88h~也可以返回内存分布信息，但是在这些旧接口返回信息与~INT 15h, EAX=E820h~不同时，应以~E820h~调用返回的信息为准。
+
+\begin{center}\begin{longtable}{lll}
+\caption[]{INT 15h, EAX=E820h~中断的输入}\label{e820_input}\\
+\hline
+EAX & 功能码 & E820h\\
+EBX & 后续   & 包含为得到下一行物理地址的“后续值”（类似于链表中的~next~指针）。\\
+& & 如果是第一次调用，EBX~必须为~0。\\
+ES:DI & 缓冲区指针 & 指向~BIOS~将要填充的地址范围描述符(Address Range Descriptor)结构。\\
+ECX & 缓冲区大小 & 缓冲区指针所指向的地址范围描述符结构的大小，以字节为单位。\\
+& & 无论~ES:DI~所指向的结构如何，BIOS~最多将会填充~ECX~字节。\\
+& & BIOS~以及调用者应该最小支持~20~个字节长,未来的实现将会扩展此限制。\\
+EDX & 签名 & 'SMAP' - BIOS~将会使用此标志，对调用者将要请求的内存分布信息进行\\
+& & 校验，这些信息会被BIOS放置到ES:DI所指向的结构中。\\
+\hline
+\end{longtable}\end{center}
+
+\begin{center}\begin{longtable}{lll}
+\caption[]{INT 15h, EAX=E820h~中断的输出}\label{e820_output}\\
+\hline
+CF & 进位标志 & 不进位(0)表示没有错误，否则则存在错误。\\
+EAX & 签名   & 'SMAP'\\
+ES:DI & 缓冲区指针 & 返回的地址范围描述符结构指针，和输入值相同。\\
+ECX & 缓冲区大小 & BIOS~填充到地址范围描述符中的字节数量，返回的最小值是~20~个字节。\\
+EBX & 后续 & 存放为得到下一个地址描述符所需要的"后续值"，这个值的实际形式倚赖于\\
+& & 具体的~BIOS~实现。调用者不必关心它的具体形式，只需要在下次迭代时将\\
+& & 其原样放置到~EBX~中，就可以通过它获取下一个地址范围描述符。注意，\\
+& & BIOS~将返回后续值~0~并且无进位来表示已经得到最后一个地址范围描述符。\\
+\hline
+\end{longtable}\end{center}
+
+上面两表中所提到的地址范围描述符(Address Range Descriptor Structure)结构为：
+\begin{Command}
+Offset(Bytes)     Name        Description
+      0       BaseAddrLow     Low 32 Bits of Base Address
+      4       BaseAddrHigh    High 32 Bits of Base Address
+      8       LengthLow       Low 32 Bits of Length in Bytes
+     12       LengthHigh      High 32 Bits of Length in Bytes
+     16       Type            Address type of  this range.
+\end{Command}
+
+上表中的~\code{type}~域可能的取值和意义有：
+\begin{Command}
+值      名称                     描述
+1       AddressRangeMemory      这段内存是~OS~可用的~RAM。
+2       AddressRangeReserved    这段内存正在被~OS~使用或者被~OS~保留，所以不可用。
+Other   Undefined               未定义~-~保留给以后使用。任何~Other~值都应该被~OS~视为                                          AddressRangeReserved.
+\end{Command}
+
+有关~INT 15h, EAX=E820h~中断的更多信息，请参考~GNU GRUB~原作者~\href{http://www.uruk.org/~erich/}{Erich Boleyn}~在~GRUB~原始文档中的一个页面：\url{http://www.uruk.org/orig-grub/mem64mb.html}。
+
+\subsubsection{得到内存信息}
+
+现在我们就可以使用~INT 15h~中断来获得系统内存的分布信息了。简单地来说，就是将~INT 15h~返回的所有结果存储在一块内存区域中，然后在程序中利用这些信息完成内存的分配。因此我们首先要在数据段中为这些信息开辟一段空间：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=68, lastline=101]{../src/chapter3/7/loader.S}
+\codecaption{用来储存内存分布信息的数据段(节自 chapter3/7/loader.S)}
+
+需要注意的一点是，为了方便起见，我们改变了前面章节的数据段符号的表示方法。以下划线开头的符号名字表示该符号只在实模式中使用，其对应的前面不带下划线的名字可以在保护模式中使用，这样比用前面加~Offset~的表达更清楚。
+
+在上面这个数据段中，~\code{\_AddMapBuf}~就是存储系统地址分布信息的缓冲区，在这里我们设置其为~256~个字节大小，至多可以容纳~12~个~20~字节大小的地址范围描述符结构体；~\code{\_ARDStruct}~即为地址范围描述符结构体，共有~5~个域；~\code{\_MemSize}~用来保存计算出的可用内存大小；~\code{\_AMECount}~记录地址分布信息条数，即共返回多少个地址范围描述符结构；~\code{\_CursorPos}~是记录当前光标位置的全局变量，用来在不同函数中向屏幕连续打印信息。
+
+下面我们就用~INT 15h~中断将得到的地址分布数据存储到缓冲区中：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=154, lastline=171]{../src/chapter3/7/loader.S}
+\codecaption{用中断~INT 15h~得到地址分布数据(节自 chapter3/7/loader.S)}
+
+得到地址分布数据的过程很简单，我们只需要设置好输入的寄存器，循环调用~INT 15h~中断，最终就能得到整个系统的地址分布信息，这些信息会被存储在~\code{\_AddMapBuf}~缓冲区中，地址分布信息的条数被记录在~\code{\_AMECount}~中。注意，这段代码是运行在实模式中，故应该使用前面带下划线的符号来引用数据。
+
+为了验证得到的数据是否正确，我们可以将得到的地址分布信息打印到屏幕上，下面这个函数就是做的这个工作：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=374, lastline=420]{../src/chapter3/7/loader.S}
+\codecaption{将地址分布信息打印到屏幕上(节自 chapter3/7/loader.S)}
+
+这个函数的流程我们已经在旁边给出了~C~语言格式的注释。简单地来说，它就是遍历整个储存地址分布信息的缓冲区~\code{\_AddMapBuf}~，将缓冲区中的数据按照地址范围描述符的格式打印出来，并通过可用内存地址的最高值来计算可用内存的大小。
+
+这个函数中使用了一些辅助的打印函数，比如~\code{DispInt, DispStr}~等，这些函数定义在~\code{lib.h}~头文件中，提供这样一些库函数能方便我们的编程：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2]{../src/chapter3/7/lib.h}
+\codecaption{chapter3/7/lib.h}
+
+因为我们已经得到了可用内存的大小，就可以根据可用内存的大小来调整我们的内存映射范围。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=326, lastline=372]{../src/chapter3/7/loader.S}
+\codecaption{根据可用内存大小调整内存映射范围(节自 chapter3/7/loader.S)}
+
+在~\code{SetupPaging}~函数中，我们首先根据可用内存计算页目录项(PDE)的数目（即页表的数目）。每个页表可以包含~1024~个页，可以指向~4MB~大小的内存，所以我们只需要用可用内存数除以~4MB~，并向上取整，就能得到需要的页目录项数，然后再根据页目录项数初始化页目录项和页表项。
+
+仔细看代码可以发现，我们这里仍然映射了一些不存在的物理地址。因为可用内存数除以~4MB~未必是整数，但是我们计算页表项数的时候使用的是~页目录项*1024(\%ecx*1024)，那么在最后一个页表的末尾就可能存在一些页映射到不可用的内存地址；并且从下文中屏幕打印的信息我们可以知道，不是所有从~0~到~MemSize~的内存都是可用的，而我们在~\code{SetupPaging}~函数中却是以连续的方式初始化所有的页，那么中间必然有一些页映射到不可用的内存地址。但总的来说，在新的~\code{SetupPaging}~函数中大大减少了页表的数量，比如当~MemSize = 32MB~的时候，我们仅仅需要~8~个页表，而不是原来的~1024~个页表，因之所有页表占用的内存也从~4MB~减小到了~32KB。
+
+至于那些映射错误，既然我们已经获得了整个系统地址分布的情况（存储在~\code{\_AddMapBuf}~中），只需要根据分布情况，增加一些判断来避免映射到不存在的内存地址即可，这里就不多做演示了。
+
+下面就可以在程序中调用我们新增加的函数：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=266, lastline=271]{../src/chapter3/7/loader.S}
+\codecaption{调用显示内存范围和开启分页机制的函数(节自 chapter3/7/loader.S)}
+
+将上面的代码编译成镜像，用虚拟机加载执行的结果如图~\ref{vb_run_11}~所示。在进入保护模式之后，首先函数~\code{DispAddrMap}~打印出虚拟机系统的内存分布信息，随后是根据内存分布信息计算出来的内存大小。接着~\code{SetupPaging}~函数根据内存大小开启处理机的分页机制。虽然我们无法直接看到分页机制启动的效果，但是接下来代码的正常执行可以告诉我们分页机制的开启是成功的。
+
+\FIG{修正内存映射的错误}{vb_run_11}{0.75\textwidth}
+
+打印的内存信息告诉我们，系统可用的内存大小是~\code{0x01ff0000}~，大约是~31.9325MB~，我们就可以根据该信息将为页表段分配内存的大小减少到~32KB：
+
+\begin{Command}
+LABEL_DESC_PAGETBL: Descriptor PageTblBase,        4096*8-1, DA_DRW /* 32K */
+\end{Command}
