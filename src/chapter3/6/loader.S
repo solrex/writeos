@@ -11,7 +11,7 @@
 #include "pm.h"
 
 .set    PageDirBase, 0x200000   /* 2MB, base address of page directory */
-.set    PageTblBase, 0x201000   /* 2MB+4KB, base address of page table  */
+.set    PageTblBase, 0x201000   /* 2MB+4KB, base address of page table */
 
 .code16
 .text
@@ -34,7 +34,7 @@ LABEL_DESC_CODER3:  Descriptor        0, (SegCodeR3Len - 1), (DA_C + DA_32 + DA_
 LABEL_DESC_STACKR3: Descriptor        0,       TopOfStackR3, (DA_DRWA + DA_32 + DA_DPL3)
 LABEL_DESC_TSS:     Descriptor        0,       (TSSLen - 1), DA_386TSS
 LABEL_DESC_PAGEDIR: Descriptor PageDirBase,            4096, DA_DRW
-LABEL_DESC_PAGETBL: Descriptor PageTblBase,            1024, (DA_DRW | DA_LIMIT_4K)
+LABEL_DESC_PAGETBL: Descriptor PageTblBase,            1023, (DA_DRW | DA_LIMIT_4K) /*4M*/
 /* Gate Descriptors */
 LABEL_CG_TEST:      Gate    SelectorCodeCG, 0, 0, (DA_386CGate + DA_DPL3)
 

@@ -33,8 +33,8 @@ LABEL_DESC_CODECG:  Descriptor        0, (SegCodeCGLen - 1), (DA_C + DA_32)
 LABEL_DESC_CODER3:  Descriptor        0, (SegCodeR3Len - 1), (DA_C + DA_32 + DA_DPL3)
 LABEL_DESC_STACKR3: Descriptor        0,       TopOfStackR3, (DA_DRWA + DA_32 + DA_DPL3)
 LABEL_DESC_TSS:     Descriptor        0,       (TSSLen - 1), DA_386TSS
-LABEL_DESC_PAGEDIR: Descriptor PageDirBase,            4096, DA_DRW
-LABEL_DESC_PAGETBL: Descriptor PageTblBase,            1024, (DA_DRW | DA_LIMIT_4K)
+LABEL_DESC_PAGEDIR: Descriptor PageDirBase,            4095, DA_DRW
+LABEL_DESC_PAGETBL: Descriptor PageTblBase,        4096*8-1, DA_DRW /* 32K */
 /* Gate Descriptors */
 LABEL_CG_TEST:      Gate    SelectorCodeCG, 0, 0, (DA_386CGate + DA_DPL3)
 
@@ -69,27 +69,27 @@ LABEL_LDT_DESC_CODEA:   Descriptor  0, (CodeALen - 1), (DA_C + DA_32)
 LABEL_DATA:
 _PMMessage:     .ascii "Welcome to protect mode! ^-^\n\0"
 _LDTMessage:    .ascii "Aha, you jumped into a LDT segment.\n\0"
-_MemChkTitle:   .ascii "BaseAddrLo BaseAddrHi LengthLo LengthHi   Type\n\0"
+_ARDSTitle:     .ascii "BaseAddrLo BaseAddrHi LengthLo LengthHi   Type\n\0"
 _RAMSizeMes:    .ascii "RAM Size:\0"
-_ReturnMes:     .ascii "\n\0"
-_MCRNumber:     .4byte 0
-_DispPos:       .4byte (80*2+0)*2
-_MemSize:       .4byte 0
-_ARDStruct:
-  _BaseAddrLow:     .4byte 0
-  _BaseAddrHigh:    .4byte 0
-  _LengthLow:       .4byte 0
-  _LengthHigh:      .4byte 0
-  _Type:            .4byte 0
-_MemChkBuf:  .space 256, 0
+_LFMes:         .ascii "\n\0"   /* Line Feed Message(New line) */
+_AMECount:      .4byte 0        /* Address Map Entry Counter */
+_CursorPos:     .4byte (80*2+0)*2  /* Screen Cursor postion for printing */
+_MemSize:       .4byte 0        /* Useable Memory Size */
+_ARDStruct:                     /* Address Range Descriptor Structure */
+  _BaseAddrLow:     .4byte 0    /* Low 32 bits of base address */
+  _BaseAddrHigh:    .4byte 0    /* High 32 bits of base address */
+  _LengthLow:       .4byte 0    /* Low 32 bits of length in bytes */
+  _LengthHigh:      .4byte 0    /* High 32 bits of length in bytes */
+  _Type:            .4byte 0    /* Address type of this range: 0, 1, other */
+_AddrMapBuf:  .space 256, 0      /* Address map buffer */
 
 .set    PMMessage,        (_PMMessage - LABEL_DATA)
 .set    LDTMessage,       (_LDTMessage - LABEL_DATA)
-.set    MemChkTitle,      (_MemChkTitle - LABEL_DATA)
+.set    ARDSTitle,        (_ARDSTitle - LABEL_DATA)
 .set    RAMSizeMes,       (_RAMSizeMes - LABEL_DATA)
-.set    ReturnMes,        (_ReturnMes - LABEL_DATA)
-.set    MCRNumber,        (_MCRNumber - LABEL_DATA)
-.set    DispPos,          (_DispPos - LABEL_DATA)
+.set    LFMes,            (_LFMes - LABEL_DATA)
+.set    AMECount,         (_AMECount - LABEL_DATA)
+.set    CursorPos,        (_CursorPos - LABEL_DATA)
 .set    MemSize,          (_MemSize - LABEL_DATA)
 .set    ARDStruct,        (_ARDStruct - LABEL_DATA)
   .set  BaseAddrLow,      (_BaseAddrLow - LABEL_DATA)
@@ -97,7 +97,7 @@ _MemChkBuf:  .space 256, 0
   .set  LengthLow,        (_LengthLow - LABEL_DATA)
   .set  LengthHigh,       (_LengthHigh - LABEL_DATA)
   .set  Type,             (_Type - LABEL_DATA)
-.set    MemChkBuf,        (_MemChkBuf - LABEL_DATA)
+.set    AddrMapBuf,       (_AddrMapBuf - LABEL_DATA)
 .set    DataLen,          (. - LABEL_DATA)
 
 /* 32-bit global stack segment. */
@@ -151,22 +151,23 @@ LABEL_BEGIN:
 
     mov     $0x100, %sp
 
-    xor     %ebx, %ebx
-    mov     $(_MemChkBuf), %di
+    /* Get System Address Map */
+    xor     %ebx, %ebx             /* EBX: Continuation, 0 */
+    mov     $(_AddrMapBuf), %di    /* ES:DI: Buffer Pointer, _AddrMapBuf */
 BEGIN.loop:
-    mov     $0xe820, %eax
-    mov     $20, %ecx
-    mov     $0x534d4150, %edx
-    int     $0x15
-    jc      LABEL_MEM_CHK_FAIL
-    add     $20, %di
-    incl    (_MCRNumber)
-    cmp     $0, %ebx
+    mov     $0xe820, %eax          /* EAX: Function code, E820h */
+    mov     $20, %ecx              /* ECX: Buffer size, 20 */
+    mov     $0x534d4150, %edx      /* EDX: Signature 'SMAP' */
+    int     $0x15                  /* INT 15h */
+    jc      BEGIN.getAMfail
+    add     $20, %di               /* Increase buffer pointer by 20(bytes) */
+    incl    (_AMECount)            /* Inc Address Map Entry Counter by 1 */
+    cmp     $0, %ebx               /* End of Address Map? */
     jne     BEGIN.loop
-    jmp     LABEL_MEM_CHK_OK
-LABEL_MEM_CHK_FAIL:
-    movl    $0, (_MCRNumber)
-LABEL_MEM_CHK_OK:
+    jmp     BEGIN.getAMok
+BEGIN.getAMfail:                   /* Failed to get system address map */
+    movl    $0, (_AMECount)
+BEGIN.getAMok:                     /* Got system address map */
 
     /* Initialize 32-bits code segment descriptor. */
     InitDesc LABEL_SEG_CODE32, LABEL_DESC_CODE32
@@ -262,16 +263,16 @@ LABEL_SEG_CODE32:
 
     mov     $(TopOfStack), %esp
 
+    push    $(ARDSTitle)           /* Display addr range descriptor struct title */
+    call    DispStr
+    add     $4, %esp
+    call    DispAddrMap            /* Display system address map */
+
+    call    SetupPaging            /* Setup and enable paging */
+
     push    $(PMMessage)
     call    DispStr
     add     $4, %esp
-
-    push    $(MemChkTitle)
-    call    DispStr
-    add     $4, %esp
-    call    DispMemSize
-    
-    call    SetupPaging
 
     mov     $(SelectorTSS), %ax    /* Load TSS to TR register */
     ltr     %ax
@@ -324,36 +325,39 @@ LABEL_SEG_CODER3:
 
 SetupPaging:
 /* Directly map linear addresses to physical addresses for simplification */
+    /* Get useable PDE number from memory size. */
     xor     %edx, %edx
-    mov     (MemSize), %eax
-    mov     $0x400000, %ebx
-    div     %ebx
+    mov     (MemSize), %eax         /* Memory Size */
+    mov     $0x400000, %ebx         /* Page table size(bytes), 1024*1024*4 */
+    div     %ebx                    /* temp = MemSize/4M */
     mov     %eax, %ecx
     test    %edx, %edx
     jz      SP.no_remainder
     inc     %ecx
 SP.no_remainder:
-    push    %ecx
+    push    %ecx                    /* number of PDE = ceil(temp) */
 
     /* Init page table directories, %ecx entries. */
     mov     $(SelectorPageDir), %ax
     mov     %ax, %es
     xor     %edi, %edi
     xor     %eax, %eax
+    /* Set PDE attributes(flags): P: 1, U/S: 1, R/W: 1. */
     mov     $(PageTblBase | PG_P | PG_USU | PG_RWW), %eax
 SP.1:
     stosl                   /* Store %eax to %es:%edi consecutively. */
     add     $4096, %eax     /* Page tables are in sequential format. */
     loop    SP.1            /* %ecx loops. */
 
-    /* Init page tables, %ecx pages. */
+    /* Init page tables, %ecx*1024 pages. */
     mov     $(SelectorPageTbl), %ax
     mov     %ax, %es
-    pop     %eax
+    pop     %eax             /* Pop pushed ecx(number of PDE) */
     mov     $1024, %ebx
-    mul     %ebx            /* Loop counter, num of pages: 1024^%ecx. */
-    mov     %eax, %ecx      
+    mul     %ebx            /* Loop counter, num of pages: 1024*%ecx. */
+    mov     %eax, %ecx
     xor     %edi, %edi
+    /* Set PTE attributes(flags): P:1, U/S: 1， R/W: 1. */
     mov     $(PG_P | PG_USU | PG_RWW), %eax
 SP.2:
     stosl                   /* Store %eax to %es:%edi consecutively. */
@@ -367,44 +371,46 @@ SP.2:
     mov     %eax, %cr0 /* Enable paging bit in %cr0. */
     ret
 
-DispMemSize:
+/* Display system address map. */
+DispAddrMap:
     push    %esi
     push    %edi
     push    %ecx
 
-    mov     $(MemChkBuf), %esi
-    mov     (MCRNumber), %ecx
+    mov     $(AddrMapBuf), %esi  /* int *p = AddrMapBuf;                     */
+    mov     (AMECount), %ecx     /* for (int i=0; i<AMECount; i++) {         */
 DMS.loop:
-    mov     $5, %edx
-    mov     $(ARDStruct), %edi
-DMS.1:                          
-    push    (%esi)
-    call    DispInt
+    mov     $5, %edx             /*   int j = 5;                             */
+    mov     $(ARDStruct), %edi   /*   int *q = (int *)ARDStruct;             */
+DMS.1:
+    push    (%esi)               /*   do {                                   */
+    call    DispInt              /*     printf("%xh", *p);                   */
     pop     %eax
-    stosl
-    add     $4, %esi
-    dec     %edx
+    stosl                        /*     *q++ = *p;                           */
+    add     $4, %esi             /*     p++;                                 */
+    dec     %edx                 /*     j--;                                 */
     cmp     $0, %edx
-    jnz     DMS.1
-    call    DispReturn
-    cmpl    $1, (Type)
+    jnz     DMS.1                /*   } while(j != 0);                       */
+    call    DispLF               /*   printf("\n");                          */
+    cmpl    $1, (Type)           /*   if (Type == AddressRangMemory){        */
     jne     DMS.2
-    mov     (BaseAddrLow), %eax
-    add     (LengthLow), %eax
-    cmp     (MemSize), %eax
-    jb      DMS.2
-    mov     %eax, (MemSize)
-DMS.2:
-    loop    DMS.loop
+    mov     (BaseAddrLow), %eax  /*     if(ARDStruct.BaseAddrLow             */
+    add     (LengthLow), %eax    /*        + ARDStruct.LengthLow             */
+    cmp     (MemSize), %eax      /*        > MemSize){                       */
+    jb      DMS.2                /*       MemSize = BaseAddrLow + LengthLow; */
+    mov     %eax, (MemSize)      /*     }                                    */
+DMS.2:                           /*   }                                      */
+    loop    DMS.loop             /* }                                        */
 
-    call    DispReturn
+    call    DispLF               /* printf("\n");                            */
     push    $(RAMSizeMes)
-    call    DispStr
+    call    DispStr              /* printf("%s", RAMSizeMes);                */
     add     $4, %esp
 
     pushl   (MemSize)
-    call    DispInt
+    call    DispInt              /* printf("%x", MemSize);                   */
     add     $4, %esp
+    call    DispLF               /* printf("\n");                            */
 
     pop     %ecx
     pop     %edi
@@ -412,4 +418,3 @@ DMS.2:
     ret
 
 #include "lib.h"
-
