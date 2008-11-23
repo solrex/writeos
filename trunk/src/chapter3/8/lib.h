@@ -104,12 +104,12 @@ DispLF:
     ret
 
 MemCpy:
-    push    %ebp
+    pushl   %ebp
     mov     %esp, %ebp
 
-    push    %esi
-    push    %edi
-    push    %ecx
+    pushl   %esi
+    pushl   %edi
+    pushl   %ecx
 
     mov     8(%ebp), %edi    /* Destination */
     mov     12(%ebp), %esi   /* Source */
@@ -117,7 +117,7 @@ MemCpy:
 MemCpy.1:
     cmp     $0, %ecx  /* Loop counter */
     jz      MemCpy.2
-    mov     %ds:(%esi), %al
+    movb    %ds:(%esi), %al
     inc     %esi
     movb    %al, %es:(%edi)
     inc     %edi
