@@ -115,7 +115,7 @@ Intel~的~CPU~在保护模式下是可以选择打开分页机制的，但为了
 
 为什么把这节提前到第~\ref{CHpm_secloadgdt}~节前讲呢？因为要写入~GDT~正确的段描述符，首先要知道段的信息，我们就得先准备好这个段：
 
-\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=83, lastline=99]{../src/chapter3/1/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=82, lastline=99]{../src/chapter3/1/loader.S}
 \codecaption{第一个在保护模式下运行的 demo(节自 chapter3/1/loader.S)}\label{CHpm_demo1}
 
 其实这个段的作用很简单，通过操纵视频段数据，在屏幕中间打印一个红色的"P"（和我们前面使用~BIOS~中断来打印字符的方式有所不同）。
@@ -124,7 +124,7 @@ Intel~的~CPU~在保护模式下是可以选择打开分页机制的，但为了
 
 GDT~所需要的信息我们都知道了，GDT~表也通过图~\ref{CHpm_descmu}~中的代码实现了。那么，我们应该向~GDT~中填入缺少的信息，然后载入~GDT~了。将~GDT~载入处理机是用~\code{lgdt}~汇编指令实现的，但是~\code{lgdt}~指令需要存放~GDT~的基址和界限的指针作参数，所以我们还需要知道~GDT~的位置和~GDT~的界限：
 
-\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=22, lastline=63]{../src/chapter3/1/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=17, lastline=63]{../src/chapter3/1/loader.S}
 \codecaption{加载~GDT(节自 chapter3/1/loader.S)}\label{CHpm_loadgdt}
 
 图~\ref{CHpm_loadgdt}~中~\code{GdtPtr}~所指，即为~GDT~的界限和基址所存放位置。某段描述符对应的~GDT~选择子，就是其段描述符相对于~GDT~基址的索引（在我们例子里~GDT~基址为~\code{LABEL\_GDT}~指向的位置）。这里需要注意的是，虽然我们在代码中写：
@@ -132,7 +132,7 @@ GDT~所需要的信息我们都知道了，GDT~表也通过图~\ref{CHpm_descmu}
 \begin{Command}
 .set SelectorCode32, (LABEL_DESC_CODE32 - LABEL_GDT)
 \end{Command}
-但实际上段选择子在使用时需要右移~3~个位作为索引去寻找其对应的段描述符，段选择子的右侧~3~个位是为了标识~TI~和~RPL~的，如图~\ref{seg_selector}~所示，这点我们将在第~\ref{CHpm_ldt}~节和第~\ref{CHpm_desattr}~节中详细介绍。但是这里为什么能直接用地址相减得到段选择子呢？因为段选择子的大小是~8 bit~，用地址相减的话，最右侧三个位就默认置~0~了。
+但实际上段选择子在使用时需要右移~3~个位作为索引去寻找其对应的段描述符，段选择子的右侧~3~个位是为了标识~TI~和~RPL~的，如图~\ref{seg_selector}~所示，这点我们将在第~\ref{CHpm_ldt}~节和第~\ref{CHpm_desattr}~节中详细介绍。但是这里为什么能直接用地址相减得到段选择子呢？因为段描述符的大小是~8~个字节，用段描述符的地址相减的话，地址差的最右侧三个位就默认置~0~了。
 
 在图~\ref{CHpm_loadgdt}~中所示的代码，主要干了两件事：第一，将图~\ref{CHpm_demo1}~所示~demo~的段基址放入~GDT~中对应的段描述符中；第二，将~GDT~的基址放到~\code{GdtPtr}~所指的数据结构中，并加载~\code{GdtPtr}~所指的数据结构到~GDTR~寄存器中（使用~\code{lgdt}~指令）。
 
@@ -346,6 +346,7 @@ x86~使用全局描述符表（GDT）和局部描述符表（LDT）来实现不�
 
 \begin{itemize}
 \item{\textbf{CPL(Current Privilege Level)}}：当前特权级，存储在~CS~和~SS~的~0, 1~位。它代表当前执行程序或任务的特权级，通常情况下与当前执行指令所在代码段的~DPL~相同。当程序跳转到不同特权级的代码段时，CPL~会随之修改。当访问一致代码段（Conforming Code Segment）时，对~CPL~的处理有些不同。一致代码段可以被不高于（数值上大于等于）该段~DPL~的特权级代码访问，但是，CPL~在访问一致代码段时不会跟随~DPL~的变化而更改。
+
 \item{\textbf{DPL(Descriptor Privilege Level)}}：描述符特权级，定义于段描述符或门描述符中的~DPL~域（见图~\ref{seg_desc}），它限制了可以访问此段资源的特权级别。根据被访问的段或者门的不同，DPL~的意义也不同：
   \begin{itemize}
   \item{\textbf{数据段}}：数据段的~DPL~限制了可以访问该数据段的最低特权级。假如数据段的~DPL~为~1，那么只有~CPL~为~0,1~的程序才能访问该数据段。
@@ -354,8 +355,8 @@ x86~使用全局描述符表（GDT）和局部描述符表（LDT）来实现不�
   \item{\textbf{一致代码段和使用调用门访问的非一致代码段}}：这种代码段的~DPL~表示可以访问该段的最高特权级。假如一致代码段的~DPL~是~2，那么~CPL~为~0,1~的程序就无法访问该段。
   \item{\textbf{TSS(Task State Segment)}}：任务状态段的~DPL~表示可以访问该段的最低特权级，与数据段~DPL~的意思一样。
   \end{itemize}
-比如一个数据段的~DPL~为~1~，那么只有当前特权级（CPL）为~0~或~1~的程序可以访问该段。
-\item{\textbf{RPL(Requested Privilege Level)}}：请求特权级，定义于段选择子的~RPL~域中（见图~\ref{seg_selector}）。它限制了这个选择子可访问资源的最高特权级。比如一个段选择子的~RPL~为~3~，那么使用这个段选择子只能访问~DPL~为~3~或者~4~的段，即使使用这个段选择子的程序当前特权级（CPL）为~0~。就是说，$\max{(CPL, RPL)}\le DPL$~才被允许访问该段，即当~CPL~小于~RPL~时，RPL~起决定性作用，反之亦然。使用~RPL~可以避免特权级高的程序代替应用程序访问该应用程序无权访问的段。比如在系统调用时，应用程序调用系统过程，虽然系统过程的特权级高（$CPL=0$），但是被调用的系统过程仍然无法访问特权级高于应用程序的段（$DPL<RPL=4$），就避免了可能出现的安全问题。
+
+\item{\textbf{RPL(Requested Privilege Level)}}：请求特权级，定义于段选择子的~RPL~域中（见图~\ref{seg_selector}）。它限制了这个选择子可访问资源的最高特权级。比如一个段选择子的~RPL~为~2~，那么使用这个段选择子只能访问~DPL~为~2~或者~3~的段，即使使用这个段选择子的程序当前特权级（CPL）为~0~。就是说，$\max{(CPL, RPL)}\le DPL$~才被允许访问该段，即当~CPL~小于~RPL~时，RPL~起决定性作用，反之亦然。使用~RPL~可以避免特权级高的程序代替应用程序访问该应用程序无权访问的段。比如在系统调用时，应用程序调用系统过程，虽然系统过程的特权级高（$CPL=0$），但是被调用的系统过程仍然无法访问特权级高于应用程序的段（$DPL<RPL=3$），就避免了可能出现的安全问题。
 \end{itemize}
 
 在将段描述符对应的段选择子加载到段寄存器时，处理机通过将~CPL, 段选择子的~RPL~和该段的~DPL~相比较，来判断程序是否有权访问另外一个段。如果~$CPL>\max{(RPL, DPL)}~$，或者$\max{(CPL, RPL)}>DPL$，那么该访问就是不合法的，处理机就会产生一个常规保护异常（\texttt{\#}GP, General Protection Exception）。
@@ -805,3 +806,4 @@ Other   Undefined               未定义~-~保留给以后使用。任何~Other
 \begin{Command}
 LABEL_DESC_PAGETBL: Descriptor PageTblBase,        4096*8-1, DA_DRW /* 32K */
 \end{Command}
+
