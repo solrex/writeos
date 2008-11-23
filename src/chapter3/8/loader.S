@@ -431,7 +431,8 @@ PSwitch:
     mov     $(PageDirBase1), %edi
     xor     %eax, %eax
     /* Set PDE attributes(flags): P: 1, U/S: 1, R/W: 1. */
-    mov     $(PageTblBase0 | PG_P | PG_USU | PG_RWW), %eax
+    mov     $(PageTblBase1 | PG_P | PG_USU | PG_RWW), %eax
+    mov     (PabeTableNum), %ecx
 PSwitch.1:
     stosl                   /* Store %eax to %es:%edi consecutively. */
     add     $4096, %eax     /* Page tables are in sequential format. */
@@ -476,21 +477,21 @@ PagingDemo:
     mov     $(SelectorFlatRW), %ax
     mov     %ax, %es
 
-    push    $(FooLen)
-    push    $(FooOffset)
-    push    $(ProcFoo)
+    pushl   $(FooLen)
+    pushl   $(FooOffset)
+    pushl   $(ProcFoo)
     call    MemCpy
     add     $12, %esp
 
-    push    $(BarLen)
-    push    $(BarOffset)
-    push    $(ProcBar)
+    pushl   $(BarLen)
+    pushl   $(BarOffset)
+    pushl   $(ProcBar)
     call    MemCpy
     add     $12, %esp
 
-    push    $(PagingDemoAllLen)
-    push    $(PagingDemoProcOffset)
-    push    $(ProcPagingDemo)
+    pushl   $(PagingDemoAllLen)
+    pushl   $(PagingDemoProcOffset)
+    pushl   $(ProcPagingDemo)
     call    MemCpy
     add     $12, %esp
 
@@ -498,31 +499,28 @@ PagingDemo:
     mov     %ax, %ds /* Data segment selector */
     mov     %ax, %es
 
-    call    SetupPaging /* Start paging*/
-    //lcall   $(SelectorFlatC), $(ProcPagingDemo)
-    call    PagingDemoProc
-    jmp     .
-    call    PSwitch      /* Swith paging */
-    lcall    $(SelectorFlatC), $(ProcPagingDemo)
-
+    /* Test show it's right. */
+    call    SetupPaging                         /* Start paging*/
+    lcall   $(SelectorFlatC), $(ProcPagingDemo)
+    call    PSwitch                             /* Swith paging */
+    lcall   $(SelectorFlatC), $(ProcPagingDemo)
     ret
 
 PagingDemoProc:
 .set    PagingDemoProcOffset, (. - LABEL_SEG_CODE32)
-    //mov     $(LinearAddrDemo), %eax
-    mov     $(ProcBar), %eax
+    mov     $(LinearAddrDemo), %eax
     call    *%eax
-    ret
+    lret
 .set    PagingDemoAllLen, (. - PagingDemoProc)
 
 foo:
 .set    FooOffset, (. - LABEL_SEG_CODE32)
     mov    $0xc, %ah            /* 0000: background black, 1100: font red */
     mov    $'F', %al
-    mov    %ax, %gs:((80 * 17 + 0) * 2)    /* Line 18, column 0 */
+    mov    %ax, %gs:((80 * 12 + 3) * 2)    /* Line 18, column 0 */
     mov    $'o', %al
-    mov    %ax, %gs:((80 * 17 + 1) * 2)    /* Line 18, column 1 */
-    mov    %ax, %gs:((80 * 17 + 2) * 2)    /* Line 18, column 2 */
+    mov    %ax, %gs:((80 * 12 + 4) * 2)    /* Line 18, column 1 */
+    mov    %ax, %gs:((80 * 12 + 5) * 2)    /* Line 18, column 2 */
     ret
 .set    FooLen, (. - foo)
 
@@ -530,11 +528,11 @@ bar:
 .set    BarOffset, (. - LABEL_SEG_CODE32)
     mov    $0xc, %ah            /* 0000: background black, 1100: font red */
     mov    $'B', %al
-    mov    %ax, %gs:((80 * 18 + 0) * 2)    /* Line 18, column 0 */
+    mov    %ax, %gs:((80 * 12 + 7) * 2)    /* Line 18, column 0 */
     mov    $'a', %al
-    mov    %ax, %gs:((80 * 18 + 1) * 2)    /* Line 18, column 1 */
+    mov    %ax, %gs:((80 * 12 + 8) * 2)    /* Line 18, column 1 */
     mov    $'r', %al
-    mov    %ax, %gs:((80 * 18 + 2) * 2)    /* Line 18, column 2 */
+    mov    %ax, %gs:((80 * 12 + 9) * 2)    /* Line 18, column 2 */
     ret
 .set    BarLen, (. - bar)
 
