@@ -113,7 +113,7 @@ LABEL_BEGIN:
     mov     %cs, %ax    /* Move code segment address(CS) to data segment */
     mov     %ax, %ds    /* register(DS), ES and SS. Because we have      */
     mov     %ax, %es    /* embedded .data section into .code section in  */
-    mov     %ax, %ss    /* the start(metioned in the NOTE above).        */
+    mov     %ax, %ss    /* the start(mentioned in the NOTE above).        */
 
     mov     $0x100, %sp
 
