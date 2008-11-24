@@ -16,7 +16,7 @@
 
 /* NOTE! Wenbo-20080512: Actually here we put the normal .data section into
    the .code section. For application SW, it is not allowed. However, we are
-   writting an OS. That is OK. Because there is no OS to complain about
+   writing an OS. That is OK. Because there is no OS to complain about
    that behavior. :) */
 
 /* Global Descriptor Table */
@@ -90,7 +90,7 @@ LABEL_SEG_CODE32:
 
     mov     %ax, %gs:(%edi)
 
-    /* Stop here, infinate loop. */
+    /* Stop here, infinite loop. */
     jmp     .
 
 /* Get the length of 32-bit segment code. */

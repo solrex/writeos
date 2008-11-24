@@ -16,7 +16,7 @@
 
 /* NOTE! Wenbo-20080512: Actually here we put the normal .data section into
    the .code section. For application SW, it is not allowed. However, we are
-   writting an OS. That is OK. Because there is no OS to complain about
+   writing an OS. That is OK. Because there is no OS to complain about
    that behavior. :) */
 
 /* Global Descriptor Table */
@@ -158,7 +158,7 @@ CODEA.1:
     jmp     CODEA.1
 CODEA.2:
 
-    /* Stop here, infinate loop. */
+    /* Stop here, infinite loop. */
     jmp     .
 .set    CodeALen, (. - LABEL_CODEA)
 
@@ -221,7 +221,7 @@ LABEL_SEG_CODECG:
 /* Get the length of 32-bit call gate destination segment code. */
 .set    SegCodeCGLen, . - LABEL_SEG_CODECG
 
-/* 32-bit code segment for runing in ring 3. */
+/* 32-bit code segment for running in ring 3. */
 LABEL_SEG_CODER3:
     mov     $(SelectorVideo), %ax
     mov     %ax, %gs
