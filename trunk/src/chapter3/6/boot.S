@@ -23,7 +23,7 @@
     nop                 /* nop required */
 BS_OEMName:         .ascii  "WB. YANG"    /* OEM String, 8 bytes required */
 BPB_BytsPerSec:     .2byte  512           /* Bytes per sector */
-BPB_SecPerCluse:    .byte   1             /* Sector per cluse */
+BPB_SecPerCluster:  .byte   1             /* Sector per cluster */
 BPB_ResvdSecCnt:    .2byte  1             /* Reserved sector count */
 BPB_NumFATs:        .byte   2             /* Number of FATs */
 BPB_RootEntCnt:     .2byte  224           /* Root entries count */
@@ -213,7 +213,7 @@ DispStr:
        x/(BPB_SecPerTrk) = y,
        x%(BPB_SecPerTrk) = z.
      The remainder 'z' PLUS 1 is the start sector number;
-     The quotient 'y' devide by BPB_NumHeads(RIGHT SHIFT 1 bit)is cylinder
+     The quotient 'y' divide by BPB_NumHeads(RIGHT SHIFT 1 bit)is cylinder
        number;
      AND 'y' by 1 can got magnetic header.
 */
@@ -223,7 +223,7 @@ ReadSector:
     sub     $2,%esp        /* Reserve space for saving %cl */
     mov     %cl,-2(%ebp)
     push    %bx            /* Save bx */
-    mov     (BPB_SecPerTrk), %bl    /* %bl: the devider */
+    mov     (BPB_SecPerTrk), %bl    /* %bl: the divider */
     div     %bl            /* 'y' in %al, 'z' in %ah */
     inc     %ah            /* z++, got start sector */
     mov     %ah,%cl        /* %cl <- start sector number */

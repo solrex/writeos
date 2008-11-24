@@ -19,7 +19,7 @@
 
 /* NOTE! Wenbo-20080512: Actually here we put the normal .data section into
    the .code section. For application SW, it is not allowed. However, we are
-   writting an OS. That is OK. Because there is no OS to complain about
+   writing an OS. That is OK. Because there is no OS to complain about
    that behavior. :) */
 
 /* Global Descriptor Table */
@@ -73,8 +73,8 @@ _ARDSTitle:     .ascii "BaseAddrLo BaseAddrHi LengthLo LengthHi   Type\n\0"
 _RAMSizeMes:    .ascii "RAM Size:\0"
 _LFMes:         .ascii "\n\0"   /* Line Feed Message(New line) */
 _AMECount:      .4byte 0        /* Address Map Entry Counter */
-_CursorPos:     .4byte (80*2+0)*2  /* Screen Cursor postion for printing */
-_MemSize:       .4byte 0        /* Useable Memory Size */
+_CursorPos:     .4byte (80*2+0)*2  /* Screen Cursor position for printing */
+_MemSize:       .4byte 0        /* Usable Memory Size */
 _ARDStruct:                     /* Address Range Descriptor Structure */
   _BaseAddrLow:     .4byte 0    /* Low 32 bits of base address */
   _BaseAddrHigh:    .4byte 0    /* High 32 bits of base address */
@@ -147,7 +147,7 @@ LABEL_BEGIN:
     mov     %cs, %ax    /* Move code segment address(CS) to data segment */
     mov     %ax, %ds    /* register(DS), ES and SS. Because we have      */
     mov     %ax, %es    /* embedded .data section into .code section in  */
-    mov     %ax, %ss    /* the start(metioned in the NOTE above).        */
+    mov     %ax, %ss    /* the start(mentioned in the NOTE above).        */
 
     mov     $0x100, %sp
 
@@ -246,7 +246,7 @@ CODEA.1:
     jmp     CODEA.1
 CODEA.2:
 
-    /* Stop here, infinate loop. */
+    /* Stop here, infinite loop. */
     jmp     .
 .set    CodeALen, (. - LABEL_CODEA)
 
@@ -307,7 +307,7 @@ LABEL_SEG_CODECG:
 /* Get the length of 32-bit call gate destination segment code. */
 .set    SegCodeCGLen, . - LABEL_SEG_CODECG
 
-/* 32-bit code segment for runing in ring 3. */
+/* 32-bit code segment for running in ring 3. */
 LABEL_SEG_CODER3:
     mov     $(SelectorVideo), %ax
     mov     %ax, %gs
@@ -320,12 +320,12 @@ LABEL_SEG_CODER3:
     lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
     jmp     .   
 
-/* Get the length f 32-bit ring 3 segment code. */
+/* Get the length of 32-bit ring 3 segment code. */
 .set    SegCodeR3Len, . - LABEL_SEG_CODER3
 
 SetupPaging:
 /* Directly map linear addresses to physical addresses for simplification */
-    /* Get useable PDE number from memory size. */
+    /* Get usable PDE number from memory size. */
     xor     %edx, %edx
     mov     (MemSize), %eax         /* Memory Size */
     mov     $0x400000, %ebx         /* Page table size(bytes), 1024*1024*4 */

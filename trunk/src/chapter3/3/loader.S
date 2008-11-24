@@ -16,7 +16,7 @@
 
 /* NOTE! Wenbo-20080512: Actually here we put the normal .data section into
    the .code section. For application SW, it is not allowed. However, we are
-   writting an OS. That is OK. Because there is no OS to complain about
+   writing an OS. That is OK. Because there is no OS to complain about
    that behavior. :) */
 
 /* Global Descriptor Table */
@@ -152,7 +152,7 @@ CODEA.1:
     jmp     CODEA.1
 CODEA.2:
 
-    /* Stop here, infinate loop. */
+    /* Stop here, infinite loop. */
     jmp     .
 .set    CodeALen, (. - LABEL_CODEA)
 

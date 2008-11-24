@@ -17,7 +17,7 @@
      D    : Data Segment
      C    : Code Segment
      S    : System Segment
-     R    : Readonly
+     R    : Read-only
      RW   : Read/Write
      A    : Access */
 .set    DA_32,  0x4000  /* 32-bit segment */
