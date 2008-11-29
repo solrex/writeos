@@ -15,10 +15,10 @@
 .set    PageDirBase1, 0x210000   /* 2MB+64KB, base address of page directory */
 .set    PageTblBase1, 0x211000   /* 2MB+68KB, base address of page table */
 
-.set    LinearAddrDemo, 0x401000
-.set    ProcFoo, 0x401000
-.set    ProcBar, 0x501000
-.set    ProcPagingDemo, 0x301000
+.set    FuncLinAddr,  0x401000 /* Linear address of a function. */
+.set    FooPhyAddr,   0x401000 /* Physical address of function foo. */
+.set    BarPhyAddr,   0x501000 /* Physical address of function bar. */
+.set    VMDemoAddr,   0x301000
 
 .code16
 .text
@@ -277,7 +277,7 @@ LABEL_SEG_CODE32:
     add     $4, %esp
     call    DispAddrMap            /* Display system address map */
 
-    call    PagingDemo             /* Setup and enable paging */
+    call    VMDemo             /* Setup and enable paging */
 
     push    $(PMMessage)
     call    DispStr
@@ -371,8 +371,50 @@ SP.2:
     add     $4096, %eax     /* Pages are in sequential format. */
     loop    SP.2            /* %ecx loops. */
 
+    /* Init page table directories, %ecx entries. */
+    mov     $(SelectorFlatRW), %ax
+    mov     %ax, %es
+    mov     $(PageDirBase1), %edi
+    xor     %eax, %eax
+    /* Set PDE attributes(flags): P: 1, U/S: 1, R/W: 1. */
+    mov     $(PageTblBase1 | PG_P | PG_USU | PG_RWW), %eax
+    mov     (PabeTableNum), %ecx
+SP.3:
+    stosl                   /* Store %eax to %es:%edi consecutively. */
+    add     $4096, %eax     /* Page tables are in sequential format. */
+    loop    SP.3       /* %ecx loops. */
+
+    /* Init page tables, %ecx*1024 pages. */
+    mov     (PabeTableNum), %eax /* Get saved ecx(number of PDE) */
+    mov     $1024, %ebx
+    mul     %ebx            /* Loop counter, num of pages: 1024*%ecx. */
+    mov     %eax, %ecx
+    mov     $(PageTblBase1), %edi
+    /* Set PTE attributes(flags): P:1, U/S: 1， R/W: 1. */
+    mov     $(PG_P | PG_USU | PG_RWW), %eax
+SP.4:
+    stosl                   /* Store %eax to %es:%edi consecutively. */
+    add     $4096, %eax     /* Pages are in sequential format. */
+    loop    SP.4       /* %ecx loops. */
+
+    /* Assume memory is larger than 8 MB. */
+    mov    $(FuncLinAddr), %eax
+    shr    $22, %eax
+    mov    $4096, %ebx
+    mul    %ebx
+    mov    %eax, %ecx
+    mov    $(FuncLinAddr), %eax
+    shr    $12, %eax
+    and    $0x3ff, %eax
+    mov    $4, %ebx
+    mul    %ebx
+    add    %ecx, %eax
+    add    $(PageTblBase1), %eax
+    movl   $(BarPhyAddr | PG_P | PG_USU | PG_RWW), %es:(%eax)
+
     mov     $(PageDirBase0), %eax
     mov     %eax, %cr3 /* Store base address of page table dir to %cr3. */
+
     mov     %cr0, %eax
     or      $0x80000000, %eax
     mov     %eax, %cr0 /* Enable paging bit in %cr0. */
@@ -424,54 +466,7 @@ DMS.2:                           /*   }                                      */
     pop     %esi
     ret
 
-PSwitch:
-    /* Init page table directories, %ecx entries. */
-    mov     $(SelectorFlatRW), %ax
-    mov     %ax, %es
-    mov     $(PageDirBase1), %edi
-    xor     %eax, %eax
-    /* Set PDE attributes(flags): P: 1, U/S: 1, R/W: 1. */
-    mov     $(PageTblBase1 | PG_P | PG_USU | PG_RWW), %eax
-    mov     (PabeTableNum), %ecx
-PSwitch.1:
-    stosl                   /* Store %eax to %es:%edi consecutively. */
-    add     $4096, %eax     /* Page tables are in sequential format. */
-    loop    PSwitch.1       /* %ecx loops. */
-
-    /* Init page tables, %ecx*1024 pages. */
-    mov     (PabeTableNum), %eax /* Get saved ecx(number of PDE) */
-    mov     $1024, %ebx
-    mul     %ebx            /* Loop counter, num of pages: 1024*%ecx. */
-    mov     %eax, %ecx
-    mov     $(PageTblBase1), %edi
-    /* Set PTE attributes(flags): P:1, U/S: 1， R/W: 1. */
-    mov     $(PG_P | PG_USU | PG_RWW), %eax
-PSwitch.2:
-    stosl                   /* Store %eax to %es:%edi consecutively. */
-    add     $4096, %eax     /* Pages are in sequential format. */
-    loop    PSwitch.2       /* %ecx loops. */
-
-    /* Assume memory is larger than 8 MB. */
-    mov    $(LinearAddrDemo), %eax
-    shr    $22, %eax
-    mov    $4096, %ebx
-    mul    %ebx
-    mov    %eax, %ecx
-    mov    $(LinearAddrDemo), %eax
-    shr    $12, %eax
-    and    $0x3ff, %eax
-    mov    $4, %ebx
-    mul    %ebx
-    add    %ecx, %eax
-    add    $(PageTblBase1), %eax
-    movl   $(ProcBar | PG_P | PG_USU | PG_RWW), %es:(%eax)
-
-    mov    $(PageDirBase1), %eax
-    mov    %eax, %cr3
-
-    ret
-
-PagingDemo:
+VMDemo:
     mov     %cs, %ax
     mov     %ax, %ds
     mov     $(SelectorFlatRW), %ax
@@ -479,19 +474,19 @@ PagingDemo:
 
     pushl   $(FooLen)
     pushl   $(FooOffset)
-    pushl   $(ProcFoo)
+    pushl   $(FooPhyAddr)
     call    MemCpy
     add     $12, %esp
 
     pushl   $(BarLen)
     pushl   $(BarOffset)
-    pushl   $(ProcBar)
+    pushl   $(BarPhyAddr)
     call    MemCpy
     add     $12, %esp
 
-    pushl   $(PagingDemoAllLen)
-    pushl   $(PagingDemoProcOffset)
-    pushl   $(ProcPagingDemo)
+    pushl   $(VMDemoAllLen)
+    pushl   $(VMDemoProcOffset)
+    pushl   $(VMDemoAddr)
     call    MemCpy
     add     $12, %esp
 
@@ -501,17 +496,20 @@ PagingDemo:
 
     /* Test show it's right. */
     call    SetupPaging                         /* Start paging*/
-    lcall   $(SelectorFlatC), $(ProcPagingDemo)
-    call    PSwitch                             /* Switch paging */
-    lcall   $(SelectorFlatC), $(ProcPagingDemo)
+    lcall   $(SelectorFlatC), $(VMDemoAddr)
+
+    mov    $(PageDirBase1), %eax
+    mov    %eax, %cr3
+
+    lcall   $(SelectorFlatC), $(VMDemoAddr)
     ret
 
-PagingDemoProc:
-.set    PagingDemoProcOffset, (. - LABEL_SEG_CODE32)
-    mov     $(LinearAddrDemo), %eax
+VMDemoProc:
+.set    VMDemoProcOffset, (. - LABEL_SEG_CODE32)
+    mov     $(FuncLinAddr), %eax
     call    *%eax
     lret
-.set    PagingDemoAllLen, (. - PagingDemoProc)
+.set    VMDemoAllLen, (. - VMDemoProc)
 
 foo:
 .set    FooOffset, (. - LABEL_SEG_CODE32)
