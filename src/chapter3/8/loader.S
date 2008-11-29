@@ -15,10 +15,9 @@
 .set    PageDirBase1, 0x210000   /* 2MB+64KB, base address of page directory */
 .set    PageTblBase1, 0x211000   /* 2MB+68KB, base address of page table */
 
-.set    FuncLinAddr,  0x401000 /* Linear address of a function. */
-.set    FooPhyAddr,   0x401000 /* Physical address of function foo. */
-.set    BarPhyAddr,   0x501000 /* Physical address of function bar. */
-.set    VMDemoAddr,   0x301000
+.set    FuncLinAddr,  0x401000   /* Linear address of a function. */
+.set    FooPhyAddr,   0x401000   /* Physical address of function foo. */
+.set    BarPhyAddr,   0x501000   /* Physical address of function bar. */
 
 .code16
 .text
@@ -88,8 +87,8 @@ _ARDStruct:                     /* Address Range Descriptor Structure */
   _LengthLow:       .4byte 0    /* Low 32 bits of length in bytes */
   _LengthHigh:      .4byte 0    /* High 32 bits of length in bytes */
   _Type:            .4byte 0    /* Address type of this range: 0, 1, other */
-_PabeTableNum:  .4byte  0       /* Number of page tables */
-_AddrMapBuf:  .space 256, 0      /* Address map buffer */
+_PageTableNum:  .4byte  0       /* Number of page tables */
+_AddrMapBuf:  .space 256, 0     /* Address map buffer */
 
 .set    PMMessage,        (_PMMessage - LABEL_DATA)
 .set    LDTMessage,       (_LDTMessage - LABEL_DATA)
@@ -105,7 +104,7 @@ _AddrMapBuf:  .space 256, 0      /* Address map buffer */
   .set  LengthLow,        (_LengthLow - LABEL_DATA)
   .set  LengthHigh,       (_LengthHigh - LABEL_DATA)
   .set  Type,             (_Type - LABEL_DATA)
-.set    PabeTableNum,     (_PabeTableNum - LABEL_DATA)
+.set    PageTableNum,     (_PageTableNum - LABEL_DATA)
 .set    AddrMapBuf,       (_AddrMapBuf - LABEL_DATA)
 .set    DataLen,          (. - LABEL_DATA)
 
@@ -238,7 +237,7 @@ LABEL_CODEA:
     mov     $(SelectorVideo), %ax
     mov     %ax, %gs
 
-    movb    $0xC, %ah               /* 0000: Black Back 1100: Red Front */
+    movb    $0xC, %ah           /* 0000: Black Back 1100: Red Front */
     xor     %esi, %esi
     xor     %edi, %edi
     movl    $(LDTMessage), %esi
@@ -260,7 +259,7 @@ CODEA.2:
 .set    CodeALen, (. - LABEL_CODEA)
 
 /* 32-bit code segment for GDT */
-LABEL_SEG_CODE32: 
+LABEL_SEG_CODE32:
     mov     $(SelectorData), %ax
     mov     %ax, %ds                /* Data segment selector */
     mov     $(SelectorData), %ax
@@ -272,30 +271,30 @@ LABEL_SEG_CODE32:
 
     mov     $(TopOfStack), %esp
 
-    push    $(ARDSTitle)           /* Display addr range descriptor struct title */
+    push    $(ARDSTitle)            /* Display addr range descriptor struct title */
     call    DispStr
     add     $4, %esp
-    call    DispAddrMap            /* Display system address map */
+    call    DispAddrMap             /* Display system address map */
 
-    call    VMDemo             /* Setup and enable paging */
+    call    VMDemo                  /* Calling Virtual Memory demo function */
 
-    push    $(PMMessage)
+    push    $(PMMessage)            /* Display PMMessage */
     call    DispStr
     add     $4, %esp
 
-    mov     $(SelectorTSS), %ax    /* Load TSS to TR register */
+    mov     $(SelectorTSS), %ax     /* Load TSS to TR register */
     ltr     %ax
 
-    pushl   $(SelectorStackR3)     /* Fake call procedure. */
+    pushl   $(SelectorStackR3)      /* Fake call procedure. */
     pushl   $(TopOfStackR3)
     pushl   $(SelectorCodeR3)
     pushl   $0
-    lret                           /* return with no call */
+    lret                            /* return with no call */
 
 CODE32.3:
     mov     $(SelectorLDT), %ax
     lldt    %ax
-    
+
     ljmp    $(SelectorLDTCodeA), $0
 
 /* Get the length of 32-bit segment code. */
@@ -327,13 +326,12 @@ LABEL_SEG_CODER3:
 
     mov     %ax, %gs:(%edi)
     lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
-    jmp     .   
+    jmp     .
 
 /* Get the length of 32-bit ring 3 segment code. */
 .set    SegCodeR3Len, . - LABEL_SEG_CODER3
 
 SetupPaging:
-/* Directly map linear addresses to physical addresses for simplification */
     /* Get usable PDE number from memory size. */
     xor     %edx, %edx
     mov     (MemSize), %eax         /* Memory Size */
@@ -344,9 +342,10 @@ SetupPaging:
     jz      SP.no_remainder
     inc     %ecx
 SP.no_remainder:
-    mov     %ecx, (PabeTableNum)    /* number of PDE = ceil(temp) */
+    mov     %ecx, (PageTableNum)    /* number of PDE = ceil(temp) */
 
-    /* Init page table directories, %ecx entries. */
+    /* Directly map linear addresses to physical addresses. */
+    /* Init page table directories of PageDir0, %ecx entries. */
     mov     $(SelectorFlatRW), %ax
     mov     %ax, %es
     mov     $(PageDirBase0), %edi
@@ -358,10 +357,9 @@ SP.1:
     add     $4096, %eax     /* Page tables are in sequential format. */
     loop    SP.1            /* %ecx loops. */
 
-    /* Init page tables, %ecx*1024 pages. */
-    mov     (PabeTableNum), %eax /* Get saved ecx(number of PDE) */
-    mov     $1024, %ebx
-    mul     %ebx            /* Loop counter, num of pages: 1024*%ecx. */
+    /* Init page tables of PageTbl0, (PageTableNum)*1024 pages. */
+    mov     (PageTableNum), %eax /* Get saved ecx(number of PDE) */
+    shl     $10, %eax       /* Loop counter, pages: 1024*(PageTableNum). */
     mov     %eax, %ecx
     mov     $(PageTblBase0), %edi
     /* Set PTE attributes(flags): P:1, U/S: 1， R/W: 1. */
@@ -371,23 +369,24 @@ SP.2:
     add     $4096, %eax     /* Pages are in sequential format. */
     loop    SP.2            /* %ecx loops. */
 
-    /* Init page table directories, %ecx entries. */
+    /* Do the same thing for PageDir1 and PageTbl1. */
+
+    /* Init page table directories of PageDir1, (PageTableNum) entries. */
     mov     $(SelectorFlatRW), %ax
     mov     %ax, %es
     mov     $(PageDirBase1), %edi
     xor     %eax, %eax
     /* Set PDE attributes(flags): P: 1, U/S: 1, R/W: 1. */
     mov     $(PageTblBase1 | PG_P | PG_USU | PG_RWW), %eax
-    mov     (PabeTableNum), %ecx
+    mov     (PageTableNum), %ecx
 SP.3:
     stosl                   /* Store %eax to %es:%edi consecutively. */
     add     $4096, %eax     /* Page tables are in sequential format. */
-    loop    SP.3       /* %ecx loops. */
+    loop    SP.3            /* %ecx loops. */
 
-    /* Init page tables, %ecx*1024 pages. */
-    mov     (PabeTableNum), %eax /* Get saved ecx(number of PDE) */
-    mov     $1024, %ebx
-    mul     %ebx            /* Loop counter, num of pages: 1024*%ecx. */
+    /* Init page tables of PageTbl1, (PageTableNum)*1024 pages. */
+    mov     (PageTableNum), %eax /* Get saved ecx(number of PDE) */
+    shl     $10, %eax       /* Loop counter: 1024*(PageTableNum). */
     mov     %eax, %ecx
     mov     $(PageTblBase1), %edi
     /* Set PTE attributes(flags): P:1, U/S: 1， R/W: 1. */
@@ -395,29 +394,25 @@ SP.3:
 SP.4:
     stosl                   /* Store %eax to %es:%edi consecutively. */
     add     $4096, %eax     /* Pages are in sequential format. */
-    loop    SP.4       /* %ecx loops. */
+    loop    SP.4            /* %ecx loops. */
 
-    /* Assume memory is larger than 8 MB. */
+    /* Locate and modify the page that includes linear address FuncLinAddr.
+     * Assume memory is larger than 8 MB. */
     mov    $(FuncLinAddr), %eax
-    shr    $22, %eax
-    mov    $4096, %ebx
-    mul    %ebx
-    mov    %eax, %ecx
-    mov    $(FuncLinAddr), %eax
-    shr    $12, %eax
-    and    $0x3ff, %eax
-    mov    $4, %ebx
-    mul    %ebx
-    add    %ecx, %eax
-    add    $(PageTblBase1), %eax
+    shr    $12, %eax        /* Get index of PTE which contains FuncLinAddr. */
+    shl    $2, %eax         /* PTE size is 4-bytes. */
+    add    $(PageTblBase1), %eax /* Get the pointer to that PTE. */
+    /* Modify the PTE of the page which contains FuncLinAddr. */
     movl   $(BarPhyAddr | PG_P | PG_USU | PG_RWW), %es:(%eax)
 
+    /* Use PageDirBase0 first. */
     mov     $(PageDirBase0), %eax
     mov     %eax, %cr3 /* Store base address of page table dir to %cr3. */
 
+    /* Enable paging bit in %cr0. */
     mov     %cr0, %eax
     or      $0x80000000, %eax
-    mov     %eax, %cr0 /* Enable paging bit in %cr0. */
+    mov     %eax, %cr0
     ret
 
 /* Display system address map. */
@@ -468,48 +463,41 @@ DMS.2:                           /*   }                                      */
 
 VMDemo:
     mov     %cs, %ax
-    mov     %ax, %ds
+    mov     %ax, %ds            /* Set %ds to code segment. */
     mov     $(SelectorFlatRW), %ax
-    mov     %ax, %es
+    mov     %ax, %es            /* Set %es to flat memory segment. */
 
     pushl   $(FooLen)
     pushl   $(FooOffset)
     pushl   $(FooPhyAddr)
-    call    MemCpy
+    call    MemCpy              /* Copy function foo to FooPhyAddr. */
     add     $12, %esp
 
     pushl   $(BarLen)
     pushl   $(BarOffset)
     pushl   $(BarPhyAddr)
-    call    MemCpy
+    call    MemCpy              /* Copy function bar to BarPhyAddr. */
     add     $12, %esp
 
-    pushl   $(VMDemoAllLen)
-    pushl   $(VMDemoProcOffset)
-    pushl   $(VMDemoAddr)
-    call    MemCpy
-    add     $12, %esp
-
+    /* Restore data segment selector to %ds and %es. */
     mov     $(SelectorData), %ax
-    mov     %ax, %ds /* Data segment selector */
+    mov     %ax, %ds
     mov     %ax, %es
 
-    /* Test show it's right. */
-    call    SetupPaging                         /* Start paging*/
-    lcall   $(SelectorFlatC), $(VMDemoAddr)
+    /* Setup and start paging*/
+    call    SetupPaging
 
+    /* Function call 1, should print "Foo". */
+    lcall   $(SelectorFlatC), $(FuncLinAddr)
+
+    /* Change current PDBR from PageDirBase0 to PageDirBase1. */
     mov    $(PageDirBase1), %eax
     mov    %eax, %cr3
 
-    lcall   $(SelectorFlatC), $(VMDemoAddr)
-    ret
+    /* Function call 2, should print "Bar". */
+    lcall   $(SelectorFlatC), $(FuncLinAddr)
 
-VMDemoProc:
-.set    VMDemoProcOffset, (. - LABEL_SEG_CODE32)
-    mov     $(FuncLinAddr), %eax
-    call    *%eax
-    lret
-.set    VMDemoAllLen, (. - VMDemoProc)
+    ret
 
 foo:
 .set    FooOffset, (. - LABEL_SEG_CODE32)
@@ -519,7 +507,7 @@ foo:
     mov    $'o', %al
     mov    %ax, %gs:((80 * 12 + 4) * 2)    /* Line 18, column 1 */
     mov    %ax, %gs:((80 * 12 + 5) * 2)    /* Line 18, column 2 */
-    ret
+    lret
 .set    FooLen, (. - foo)
 
 bar:
@@ -531,7 +519,7 @@ bar:
     mov    %ax, %gs:((80 * 12 + 8) * 2)    /* Line 18, column 1 */
     mov    $'r', %al
     mov    %ax, %gs:((80 * 12 + 9) * 2)    /* Line 18, column 2 */
-    ret
+    lret
 .set    BarLen, (. - bar)
 
 #include "lib.h"
