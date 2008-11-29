@@ -1,6 +1,7 @@
 
 SUBDIRS = ./chapter2/1 ./chapter2/2 ./chapter3/1 ./chapter3/2 ./chapter3/3 \
-./chapter3/4 ./chapter3/5
+./chapter3/4 ./chapter3/5 ./chapter3/6 ./chapter3/7 ./chapter3/8
+
 
 all:
 	for dir in $(SUBDIRS); do \
