@@ -1,4 +1,21 @@
 
+=== Rev 2 ===
+2008.11.29 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/8/pm.h,
+	* src/chapter3/8/boot.S,
+	* src/chapter3/8/loader.S,
+	* src/chapter3/8/Makefile,
+	* src/chapter3/8/solrex_x86_boot.ld,
+	* src/chapter3/8/solrex_x86_dos.ld,
+	* src/chapter3/8/lib.h: Source for chapter 3.5.
+	* src/chapter3/8/bochsrc.bxrc.
+	* pdf/images/vb_run_12.eps: Pictures for chapter 3.5.
+	* pdf/images/fat_map.eps: Fixed a bug in fat format figure.
+	* pdf/003.tex: Finished chapter 3.
+	* pdf/004.tex: Added Chapter 4.
+
+
 2008.11.02 Wenbo Yang <solrex@gmail.com>
 
 	* pdf/images/paging_ex.eps,
