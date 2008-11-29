@@ -251,7 +251,7 @@ CODEA.2:
 .set    CodeALen, (. - LABEL_CODEA)
 
 /* 32-bit code segment for GDT */
-LABEL_SEG_CODE32: 
+LABEL_SEG_CODE32:
     mov     $(SelectorData), %ax
     mov     %ax, %ds                /* Data segment selector */
     mov     $(SelectorData), %ax
@@ -286,7 +286,7 @@ LABEL_SEG_CODE32:
 CODE32.3:
     mov     $(SelectorLDT), %ax
     lldt    %ax
-    
+
     ljmp    $(SelectorLDTCodeA), $0
 
 /* Get the length of 32-bit segment code. */
@@ -318,7 +318,7 @@ LABEL_SEG_CODER3:
 
     mov     %ax, %gs:(%edi)
     lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
-    jmp     .   
+    jmp     .
 
 /* Get the length of 32-bit ring 3 segment code. */
 .set    SegCodeR3Len, . - LABEL_SEG_CODER3
@@ -353,8 +353,7 @@ SP.1:
     mov     $(SelectorPageTbl), %ax
     mov     %ax, %es
     pop     %eax             /* Pop pushed ecx(number of PDE) */
-    mov     $1024, %ebx
-    mul     %ebx            /* Loop counter, num of pages: 1024*%ecx. */
+    shl     $10, %eax        /* Loop counter, num of pages: 1024*%ecx. */
     mov     %eax, %ecx
     xor     %edi, %edi
     /* Set PTE attributes(flags): P:1, U/S: 1， R/W: 1. */
