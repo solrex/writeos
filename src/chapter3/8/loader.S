@@ -499,26 +499,28 @@ VMDemo:
 
     ret
 
+/* Function foo, print message "Foo". */
 foo:
 .set    FooOffset, (. - LABEL_SEG_CODE32)
     mov    $0xc, %ah            /* 0000: background black, 1100: font red */
     mov    $'F', %al
-    mov    %ax, %gs:((80 * 12 + 3) * 2)    /* Line 18, column 0 */
+    mov    %ax, %gs:((80 * 12 + 3) * 2)    /* Line 12, column 3 */
     mov    $'o', %al
-    mov    %ax, %gs:((80 * 12 + 4) * 2)    /* Line 18, column 1 */
-    mov    %ax, %gs:((80 * 12 + 5) * 2)    /* Line 18, column 2 */
+    mov    %ax, %gs:((80 * 12 + 4) * 2)    /* Line 12, column 4 */
+    mov    %ax, %gs:((80 * 12 + 5) * 2)    /* Line 12, column 5 */
     lret
 .set    FooLen, (. - foo)
 
+/* Function bar, print message "Bar". */
 bar:
 .set    BarOffset, (. - LABEL_SEG_CODE32)
     mov    $0xc, %ah            /* 0000: background black, 1100: font red */
     mov    $'B', %al
-    mov    %ax, %gs:((80 * 12 + 7) * 2)    /* Line 18, column 0 */
+    mov    %ax, %gs:((80 * 12 + 7) * 2)    /* Line 12, column 7 */
     mov    $'a', %al
-    mov    %ax, %gs:((80 * 12 + 8) * 2)    /* Line 18, column 1 */
+    mov    %ax, %gs:((80 * 12 + 8) * 2)    /* Line 12, column 8 */
     mov    $'r', %al
-    mov    %ax, %gs:((80 * 12 + 9) * 2)    /* Line 18, column 2 */
+    mov    %ax, %gs:((80 * 12 + 9) * 2)    /* Line 12, column 9 */
     lret
 .set    BarLen, (. - bar)
 

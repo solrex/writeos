@@ -692,7 +692,7 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 \subsection{修正内存映射的错误}
 
-我们前面提到我们犯了一个大错误，将线性地址映射到了不存在的物理地址上。那么一个相对简单的解决办法是避免映射不存在的物理地址，也就是说我们不需要将页目录和页表中的条目全部用完。这样还有另外一个好处就是减小了页表所占用的空间，在上一节的例子中，~$1024^2$~个页表共占用了~4MB~的空间，而我们给虚拟机总共才分配了~32MB~的内存，这显然是极大的浪费。
+我们前面提到犯了一个大错误，将线性地址映射到了不存在的物理地址上。那么一个相对简单的解决办法是避免映射不存在的物理地址，也就是说我们不需要将页目录和页表中的条目全部用完。这样还有另外一个好处就是减小了页表所占用的空间，在上一节的例子中，~$1024^2$~个页表共占用了~4MB~的空间，而我们给虚拟机总共才分配了~32MB~的内存，这显然是极大的浪费。
 
 为了避免映射不存在的物理地址，我们就需要知道机器的内存有多大。通常情况下我们使用功能码为~E820h~的~15h~中断来做这件事情。
 
@@ -807,3 +807,66 @@ Other   Undefined               未定义~-~保留给以后使用。任何~Other
 LABEL_DESC_PAGETBL: Descriptor PageTblBase,        4096*8-1, DA_DRW /* 32K */
 \end{Command}
 
+\subsection{体验虚拟内存}
+
+在上面两个小节中，我们在开启分页机制时都是直接将线性地址映射到与之相同的物理地址上。这样能简化我们分页的函数，但这显然不是分页机制的最终目的。回想本节开头所提到的虚拟内存机制，它可以使每个应用程序都以为自己拥有完整连续的内存空间，即应用程序看到的只是一个完整的线性地址空间，但只有在使用某地址块时操作系统才将该地址块映射到实际的物理地址上，这个块的最小单位就是“页”。这样就会出现一种情况，比如用~GDB~调试两个不同的程序时，我们会发现两个程序使用的是同一块地址，但地址的内容却完全不同。这就是因为我们看到的只是线性地址，它们会被映射到不同的物理地址上。
+
+想想这一机制对程序员有多大帮助吧！程序员在写应用程序时不必成天为自己怎么分配内存而担心，也不必恐惧别的程序会覆盖自己的内存空间（当然，作为~OS~程序员，这种恐惧是应当时常放在心上的），在他的眼里，自己有~4GB(32-bit CPU)~的内存可以用——就好像自己拥有一个城市一样，太酷了！他可以想住在哪里就住在哪里，想分配什么地址就分配什么地址！虽然实际上还是会受到编译器和运行效率的限制，不过无论如何，自由度大大增加了。
+
+下面我们就用一个小例子体验一下简单的虚拟内存机制：两次访问同一线性地址时，执行的却是不同的函数（还记得赫拉克利特的那句话吗~\smiley~）。
+
+如何做呢？首先，我们需要准备两个函数，每个函数各自打印函数自身名称信息；其次，因为我们希望两次访问同一线性地址执行不同函数，那么就需要准备两套页目录和页表，两套页表中对应该线性地址页的~PTE~中的基址（物理地址）分别指向我们上面准备的两个不同的函数，这样切换页表就能实现同一线性地址映射不同的函数上；最后呢，在示例函数中切换页表，并在切换前后调用同一个线性地址上的函数，看打印的信息是否相同。如果打印的信息不同，就说明该线性地址在页表切换前后分别映射到了不同的函数上。
+
+准备两个打印自身信息的函数很简单：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=502, lastline=525]{../src/chapter3/8/loader.S}
+\codecaption{两个打印自身信息的函数~Foo~和~Bar~(节自 chapter3/8/loader.S)}
+
+这两个函数的内容很简单，就是在屏幕的不同位置打印自身的信息。foo~函数在屏幕的第~12~行~3-5~列打印~Foo~三个红色字符，bar~也一样，在屏幕的第~12~行~6-8~列打印~Bar~三个红色字符。至于为什么使用~lret~而不是~ret~指令返回，我们下面会说明。
+
+编译之后，这两个函数的确是位于不同的物理地址上，但是这两个函数入口的物理地址却不是按照页面对齐的。回想一下图~\ref{pde_pte}~，~PTE~中的页的物理地址要以~4KB~为边界对齐。这样我们才好将同一个页分别映射到这两个函数的入口物理地址。要想使这两个函数入口的物理地址按照~4KB~对齐，有两种方法：一种是直接使代码对齐~4KB，比如可以在每个函数入口前使用~GAS~的~\code{.align 4096}~伪指令使当前地址对齐到~4KB~上，但是这种方法会使得目标文件中填充大量的~0~，我们不采用这种方法；另一种方法是定义两个~4KB~对齐的物理地址，然后将~foo~和~bar~分别拷贝到这两个地址中。我们下面采取这个方法。定义两个~4KB~对齐的物理地址，一个线性地址和两个页表对应的页目录和页表基址：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=13, lastline=20]{../src/chapter3/8/loader.S}
+\codecaption{~4KB~对齐的物理地址(节自 chapter3/8/loader.S)}
+
+在上图中，~\code{FooPhyAddr}~和~\code{BarPhyAddr}~分别是~foo~和~bar~将要被拷贝到的目标地址。~\code{FuncLinAddr}~则是我们要执行函数调用所使用的线性地址。再加上有了两个页表对应的页目录和页表基址，我们就可以使用这些信息，修改上一小节使用的~\code{SetupPaging}~函数，分别设置两个页表了：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=334, lastline=416]{../src/chapter3/8/loader.S}
+\codecaption{设置两个页表并开启分页机制(节自 chapter3/8/loader.S)}
+
+这里的~\code{SetupPaging}~函数比前一小节要复杂了不少，但是增加的大部分内容却是重复的，在上一小节的~\code{SetupPaging}~函数中，我们只初始化了一个页表，这里我们初始化了两个，除了页目录基址和页表基址以外，这两个页表的初始化过程是完全相同的。所不同的是在初始化第二个页表之后，我们修改了第二个页表中包含线性地址~\code{FuncLinAddr}~那个页所对应的物理地址。所以，在第一个页表中，所有的线性地址都映射到相应的物理地址上，线性地址~\code{FuncLinAddr}~所对应的物理地址就是与它相同的~\code{FooPhyAddr}；在第二个页表中，所有的线性地址也是映射到相应的物理地址，除了线性地址~\code{FuncLinAddr}~所在的页被修改为映射到物理地址~\code{BarPhyAddr}~上。
+
+这个函数里使用了一个新段~\code{SelectorFlatRW}~和一个新的变量~\code{PageTableNum}，它们的定义如下：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=42, lastline=43]{../src/chapter3/8/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=63, lastline=64]{../src/chapter3/8/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=90, lastline=91]{../src/chapter3/8/loader.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=107, lastline=108]{../src/chapter3/8/loader.S}
+\codecaption{添加的新段和变量(节自 chapter3/8/loader.S)}
+
+其中两个新段~\code{LABEL\_DESC\_FLAT\_C}~和~\code{LABEL\_DESC\_FLAT\_RW}~的基址都是~0~，代表整个线性地址空间。使用这两个段时，指令或者位置的段偏移就是该指令或者位置的线性地址。因此在~\code{SetupPaging}~函数中使用
+~\code{LABEL\_DESC\_FLAT\_RW}~作为~ES~段，那么偏移量~\code{PageDirBase0}~所指向的线性地址就是线性地址~\code{PageDirBase0}~，这样就不需要上一小节所使用的~\code{LABEL\_DESC\_PAGEDIR}~段了。
+
+在~\code{SetupPaging}~函数最后，我们依然使用第一个页表，然后开启分页机制。第二个页表虽然被初始化了，但是并没有使用。
+
+最后，我们写一个示例函数来完成拷贝函数、切换页表和调用同一线性地址的过程：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=464, lastline=500]{../src/chapter3/8/loader.S}
+\codecaption{拷贝函数、切换页表并调用同一线性地址的示例函数(节自 chapter3/8/loader.S)}
+
+在函数~\code{VMDemo}~中，我们首先拷贝函数~foo~和~bar~的内存到目标物理地址~FooPhyAddr~和~BarPhyAddr。由于~foo~和~bar~处于代码段，如果想要拷贝成功，就需要把代码段的属性改为可读，即为~\code{LABEL\_DESC\_CODE32}~加上可读属性：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=32, lastline=33]{../src/chapter3/8/loader.S}
+
+然后就可以将~DS~设置为代码段，ES~设置为线性地址段，将每个函数的长度、段偏移和目标物理地址（未分页前线性地址和物理地址等同）作为~MemCpy~的参数，执行函数调用就能完成拷贝。MemCpy~函数定义于库文件~lib.h~中：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=106, lastline=133]{../src/chapter3/8/lib.h}
+\codecaption{MemCpy~函数定义(节自 chapter3/8/lib.h)}
+
+拷贝完成之后，仍需要恢复~DS~和~ES~为原来的数据段。然后执行~\code{SetupPaging}~开启分页机制，首先使用的是第一个页表，我们直接调用线性地址~\code{FuncLinAddr}~，然后切换到第二个页表，再次调用线性地址~\code{FuncLinAddr}。我们可以看到，这两次调用的指令是一模一样的，如果没有虚拟内存机制，那么两次调用执行的效果应该是一样的。
+
+最后在程序中加入对~\code{VMDemo}~的调用：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=279, lastline=281]{../src/chapter3/8/loader.S}
+
+我们将上面的代码编译成镜像，用虚拟机加载执行，结果如图所示。
