@@ -1,9 +1,9 @@
 /* chapter2/1/boot.S
 
-   Author: Wenbo Yang <solrex@gmail.com> <http://solrex.cn>
+   Author: Wenbo Yang <http://yangwenbo.com>
 
    This file is part of the source code of book "Write Your Own OS with Free
-   and Open Source Software". Homepage @ <http://share.solrex.cn/WriteOS/>.
+   and Open Source Software". Homepage @ <https://github.com/solrex/writeos>.
 
    This file is licensed under the GNU General Public License; either
    version 3 of the License, or (at your option) any later version. */
